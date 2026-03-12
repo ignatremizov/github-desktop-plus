@@ -67,6 +67,12 @@
     }
   }
 
+  .formatting-tab {
+    .select-component {
+      margin-top: var(--spacing);
+    }
+  }
+
   .accounts-tab {
     .account-info {
       .user-info-container {
