@@ -1,4 +1,7 @@
-import { getNumberFormatPreference } from '../models/formatting-preferences'
+import {
+  getNumberFormatPreference,
+  INumberFormat,
+} from '../models/formatting-preferences'
 import { round } from '../ui/lib/round'
 import { enableFormattingPreferences } from './feature-flag'
 
@@ -12,13 +15,12 @@ import { enableFormattingPreferences } from './feature-flag'
  * @param fmt   - The number format configuration with thousands and decimal
  *                separators, defaults to the user's preferred format.
  */
-export function formatNumber(
-  value: number,
-  fmt = getNumberFormatPreference()
-): string {
-  if (!enableFormattingPreferences()) {
+export function formatNumber(value: number, fmt?: INumberFormat): string {
+  if (!fmt && !enableFormattingPreferences()) {
     return value.toString()
   }
+
+  fmt ??= getNumberFormatPreference()
 
   if (!Number.isFinite(value)) {
     return String(value)
@@ -43,10 +45,6 @@ export function formatNumber(
 }
 
 export function formatCompactNumber(value: number) {
-  if (!enableFormattingPreferences()) {
-    return value.toString()
-  }
-
   if (!Number.isFinite(value)) {
     return `${value}`
   }
@@ -55,7 +53,6 @@ export function formatCompactNumber(value: number) {
     return formatNumber(value)
   }
 
-  const decimals = value < 10000 ? 1 : 0
   const units = ['', 'k', 'm', 'b', 't']
   const unitIx = Math.min(
     units.length - 1,
@@ -66,6 +63,9 @@ export function formatCompactNumber(value: number) {
     return formatNumber(value) + ' ' + units[unitIx]
   }
 
-  const result = round(value / Math.pow(1000, unitIx), decimals)
+  const scaled = value / Math.pow(1000, unitIx)
+  const decimals = scaled < 10 ? 1 : 0
+
+  const result = round(scaled, decimals)
   return formatNumber(result) + ' ' + units[unitIx]
 }

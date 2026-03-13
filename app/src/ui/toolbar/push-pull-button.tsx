@@ -29,7 +29,10 @@ import { FoldoutType, IConstrainedValue } from '../../lib/app-state'
 import { ForcePushBranchState } from '../../lib/rebase'
 import { PushPullButtonDropDown } from './push-pull-button-dropdown'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
-import { enableResizingToolbarButtons } from '../../lib/feature-flag'
+import {
+  enableFormattingPreferences,
+  enableResizingToolbarButtons,
+} from '../../lib/feature-flag'
 import { formatCompactNumber } from '../../lib/format-number'
 
 export const DropdownItemClassName = 'push-pull-dropdown-item'
@@ -139,7 +142,9 @@ function renderAheadBehind(aheadBehind: IAheadBehind, numTagsToPush: number) {
   if (ahead > 0 || numTagsToPush > 0) {
     content.push(
       <span key="ahead">
-        {formatCompactNumber(ahead + numTagsToPush)}
+        {enableFormattingPreferences()
+          ? formatCompactNumber(ahead + numTagsToPush)
+          : ahead + numTagsToPush}
         <Octicon symbol={octicons.arrowUp} />
       </span>
     )
@@ -148,7 +153,7 @@ function renderAheadBehind(aheadBehind: IAheadBehind, numTagsToPush: number) {
   if (behind > 0) {
     content.push(
       <span key="behind">
-        {formatCompactNumber(behind)}
+        {enableFormattingPreferences() ? formatCompactNumber(behind) : behind}
         <Octicon symbol={octicons.arrowDown} />
       </span>
     )
