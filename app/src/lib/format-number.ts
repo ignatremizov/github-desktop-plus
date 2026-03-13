@@ -45,6 +45,10 @@ export function formatNumber(value: number, fmt?: INumberFormat): string {
 }
 
 export function formatCompactNumber(value: number) {
+  if (!enableFormattingPreferences()) {
+    return `${value}`
+  }
+
   if (!Number.isFinite(value)) {
     return `${value}`
   }
