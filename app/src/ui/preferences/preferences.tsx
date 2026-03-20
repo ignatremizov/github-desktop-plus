@@ -166,10 +166,10 @@ interface IPreferencesState {
   // Whether the preferences related to Git hooks environment have been changed
   readonly hooksPreferencesDirty: boolean
 
-  readonly selectedDateFormat: DateFormat
-  readonly selectedTimeFormat: TimeFormat
-  readonly selectedNumberFormat: INumberFormat
-  readonly preferAbsoluteDates: boolean
+  readonly selectedDateFormat?: DateFormat
+  readonly selectedTimeFormat?: TimeFormat
+  readonly selectedNumberFormat?: INumberFormat
+  readonly preferAbsoluteDates?: boolean
 }
 
 /**
@@ -535,13 +535,21 @@ export class Preferences extends React.Component<
             onSelectedThemeChanged={this.onSelectedThemeChanged}
             selectedTabSize={this.props.selectedTabSize}
             onSelectedTabSizeChanged={this.onSelectedTabSizeChanged}
-            selectedDateFormat={this.state.selectedDateFormat}
+            selectedDateFormat={
+              this.state.selectedDateFormat ?? getDateFormatPreference()
+            }
             onSelectedDateFormatChanged={this.onSelectedDateFormatChanged}
-            selectedTimeFormat={this.state.selectedTimeFormat}
+            selectedTimeFormat={
+              this.state.selectedTimeFormat ?? getTimeFormatPreference()
+            }
             onSelectedTimeFormatChanged={this.onSelectedTimeFormatChanged}
-            selectedNumberFormat={this.state.selectedNumberFormat}
+            selectedNumberFormat={
+              this.state.selectedNumberFormat ?? getNumberFormatPreference()
+            }
             onSelectedNumberFormatChanged={this.onSelectedNumberFormatChanged}
-            preferAbsoluteDates={this.state.preferAbsoluteDates}
+            preferAbsoluteDates={
+              this.state.preferAbsoluteDates ?? getPreferAbsoluteDates()
+            }
             onPreferAbsoluteDatesChanged={this.onPreferAbsoluteDatesChanged}
           />
         )
@@ -959,10 +967,21 @@ export class Preferences extends React.Component<
     dispatcher.setDiffCheckMarksSetting(this.state.showDiffCheckMarks)
 
     if (enableFormattingPreferences()) {
-      setDateFormatPreference(this.state.selectedDateFormat)
-      setTimeFormatPreference(this.state.selectedTimeFormat)
-      setNumberFormatPreference(this.state.selectedNumberFormat)
-      setPreferAbsoluteDates(this.state.preferAbsoluteDates)
+      if (this.state.selectedDateFormat !== undefined) {
+        setDateFormatPreference(this.state.selectedDateFormat)
+      }
+
+      if (this.state.selectedTimeFormat !== undefined) {
+        setTimeFormatPreference(this.state.selectedTimeFormat)
+      }
+
+      if (this.state.selectedNumberFormat !== undefined) {
+        setNumberFormatPreference(this.state.selectedNumberFormat)
+      }
+
+      if (this.state.preferAbsoluteDates !== undefined) {
+        setPreferAbsoluteDates(this.state.preferAbsoluteDates)
+      }
     }
 
     this.props.onDismissed()
