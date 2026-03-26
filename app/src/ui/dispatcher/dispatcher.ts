@@ -2928,6 +2928,10 @@ export class Dispatcher {
     this.appStore._setShowWorktrees(showWorktrees)
   }
 
+  public setShowWorktreesInSidebar(showWorktreesInSidebar: boolean) {
+    this.appStore._setShowWorktreesInSidebar(showWorktreesInSidebar)
+  }
+
   public setShowCompareTab(showCompareTab: boolean) {
     this.appStore._setShowCompareTab(showCompareTab)
   }

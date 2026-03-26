@@ -34,6 +34,10 @@
     // name and truncate accordingly
     width: 100%;
 
+    &.nested-worktree {
+      padding-left: calc(var(--spacing) + 20px);
+    }
+
     .icon-for-repository {
       // Some room between the icon and repository name
       margin-right: var(--spacing-half);
@@ -87,6 +91,13 @@
         margin-right: 2px;
         vertical-align: text-bottom;
       }
+    }
+
+    .worktrees-loading {
+      color: var(--text-secondary-color);
+      font-size: var(--font-size-sm);
+      margin-left: var(--spacing);
+      flex-shrink: 0;
     }
   }
 

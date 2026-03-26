@@ -1,9 +1,13 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { groupRepositories } from '../../src/ui/repositories-list/group-repositories'
 import { Repository, ILocalRepositoryState } from '../../src/models/repository'
 import { CloningRepository } from '../../src/models/cloning-repository'
 import { gitHubRepoFixture } from '../helpers/github-repo-builder'
+import { WorktreeEntry } from '../../src/models/worktree'
 
 describe('repository list grouping', () => {
   const repositories: Array<Repository | CloningRepository> = [
@@ -152,5 +156,208 @@ describe('repository list grouping', () => {
 
     assert.equal(grouped[2].items[1].text[0], 'enterprise-repo')
     assert(grouped[2].items[1].needsDisambiguation)
+  })
+
+  it('nests linked worktrees under their main repository in non-recent groups', async () => {
+    const tempRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'github-desktop-plus-worktree-grouping-')
+    )
+    const mainRepoPath = path.join(tempRoot, 'repo')
+    const linkedRepoPath = path.join(tempRoot, 'repo-feature-worktree')
+
+    await mkdir(path.join(mainRepoPath, '.git'), { recursive: true })
+    await mkdir(path.join(mainRepoPath, '.git', 'worktrees', 'fix-node'), {
+      recursive: true,
+    })
+    await mkdir(linkedRepoPath, { recursive: true })
+    await writeFile(
+      path.join(linkedRepoPath, '.git'),
+      'gitdir: ../repo/.git/worktrees/fix-node\n'
+    )
+    await writeFile(
+      path.join(mainRepoPath, '.git', 'worktrees', 'fix-node', 'commondir'),
+      '../..\n'
+    )
+
+    const mainRepo = new Repository(
+      mainRepoPath,
+      1,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+    const linkedRepo = new Repository(
+      linkedRepoPath,
+      2,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+
+    const grouped = groupRepositories([linkedRepo, mainRepo], cache, [], {
+      showWorktreesInSidebar: true,
+    })
+
+    assert.equal(grouped.length, 1)
+    assert.equal(grouped[0].items.length, 2)
+    assert.equal(grouped[0].items[0].repository.path, mainRepoPath)
+    assert.equal(grouped[0].items[0].isNestedWorktree, false)
+    assert.equal(grouped[0].items[1].repository.path, linkedRepoPath)
+    assert.equal(grouped[0].items[1].isNestedWorktree, true)
+    assert.equal(grouped[0].items[1].mainWorktreeName, 'repo')
+  })
+
+  it('shows unstored linked worktrees under their main repository', () => {
+    const mainRepoPath = '/tmp/repo'
+    const unstoredWorktreePath = '/tmp/repo-feature-a'
+    const mainRepo = new Repository(
+      mainRepoPath,
+      10,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+
+    const allWorktrees: ReadonlyArray<WorktreeEntry> = [
+      {
+        path: mainRepoPath,
+        head: 'a',
+        branch: 'refs/heads/main',
+        isDetached: false,
+        type: 'main',
+        isLocked: false,
+        isPrunable: false,
+      },
+      {
+        path: unstoredWorktreePath,
+        head: 'b',
+        branch: 'refs/heads/feature/a',
+        isDetached: false,
+        type: 'linked',
+        isLocked: false,
+        isPrunable: false,
+      },
+    ]
+
+    cache.set(mainRepo.id, {
+      aheadBehind: null,
+      changedFilesCount: 0,
+      branchName: 'main',
+      defaultBranchName: 'main',
+      isLoadingWorktrees: false,
+      allWorktrees,
+    })
+
+    const grouped = groupRepositories([mainRepo], cache, [], {
+      showWorktreesInSidebar: true,
+    })
+
+    assert.equal(grouped.length, 1)
+    assert.equal(grouped[0].items.length, 2)
+    assert.equal(grouped[0].items[0].repository.path, mainRepoPath)
+    assert.equal(grouped[0].items[1].worktreePath, unstoredWorktreePath)
+    assert.equal(grouped[0].items[1].isVirtualLinkedWorktree, true)
+    assert.equal(grouped[0].items[1].text[0], 'repo-feature-a')
+    assert.equal(grouped[0].items[1].branchName, 'feature/a')
+  })
+
+  it('uses parent preloaded worktree data for stored linked worktree branch names', async () => {
+    const tempRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'github-desktop-plus-worktree-branch-fallback-')
+    )
+    const mainRepoPath = path.join(tempRoot, 'repo')
+    const linkedRepoPath = path.join(tempRoot, 'repo-feature-a')
+
+    await mkdir(path.join(mainRepoPath, '.git'), { recursive: true })
+    await mkdir(path.join(mainRepoPath, '.git', 'worktrees', 'feature-a'), {
+      recursive: true,
+    })
+    await mkdir(linkedRepoPath, { recursive: true })
+    await writeFile(
+      path.join(linkedRepoPath, '.git'),
+      'gitdir: ../repo/.git/worktrees/feature-a\n'
+    )
+    await writeFile(
+      path.join(mainRepoPath, '.git', 'worktrees', 'feature-a', 'commondir'),
+      '../..\n'
+    )
+
+    const mainRepo = new Repository(
+      mainRepoPath,
+      12,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+    const linkedRepo = new Repository(
+      linkedRepoPath,
+      13,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+
+    const allWorktrees: ReadonlyArray<WorktreeEntry> = [
+      {
+        path: mainRepoPath,
+        head: 'a',
+        branch: 'refs/heads/main',
+        isDetached: false,
+        type: 'main',
+        isLocked: false,
+        isPrunable: false,
+      },
+      {
+        path: linkedRepoPath,
+        head: 'b',
+        branch: 'refs/heads/feature/a',
+        isDetached: false,
+        type: 'linked',
+        isLocked: false,
+        isPrunable: false,
+      },
+    ]
+
+    cache.set(mainRepo.id, {
+      aheadBehind: null,
+      changedFilesCount: 0,
+      branchName: 'main',
+      defaultBranchName: 'main',
+      isLoadingWorktrees: false,
+      allWorktrees,
+    })
+
+    const grouped = groupRepositories([linkedRepo, mainRepo], cache, [], {
+      showWorktreesInSidebar: true,
+    })
+
+    assert.equal(grouped.length, 1)
+    assert.equal(grouped[0].items.length, 2)
+    assert.equal(grouped[0].items[1].repository.path, linkedRepoPath)
+    assert.equal(grouped[0].items[1].isNestedWorktree, true)
+    assert.equal(grouped[0].items[1].branchName, 'feature/a')
+  })
+
+  it('marks main repositories as loading while nested worktrees are being discovered', () => {
+    const mainRepoPath = '/tmp/repo'
+    const mainRepo = new Repository(
+      mainRepoPath,
+      11,
+      gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+      false
+    )
+
+    cache.set(mainRepo.id, {
+      aheadBehind: null,
+      changedFilesCount: 0,
+      branchName: 'main',
+      defaultBranchName: 'main',
+      isLoadingWorktrees: true,
+      allWorktrees: [],
+    })
+
+    const grouped = groupRepositories([mainRepo], cache, [], {
+      showWorktreesInSidebar: true,
+    })
+
+    assert.equal(grouped.length, 1)
+    assert.equal(grouped[0].items.length, 1)
+    assert.equal(grouped[0].items[0].repository.path, mainRepoPath)
+    assert.equal(grouped[0].items[0].isLoadingNestedWorktrees, true)
   })
 })

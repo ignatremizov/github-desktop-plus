@@ -111,6 +111,7 @@ import {
   IAPIRepoRuleset,
 } from '../api'
 import { shell } from '../app-shell'
+import { normalizePath } from '../helpers/path'
 import {
   ChangesSelectionKind,
   ChangesWorkingDirectorySelection,
@@ -467,9 +468,16 @@ const shellKey = 'shell'
 
 const showRecentRepositoriesKey = 'show-recent-repositories'
 const showWorktreesKey = 'show-worktrees'
+const showWorktreesInSidebarKey = 'show-worktrees-in-sidebar'
 const showCompareTabKey = 'show-compare-tab'
 const showCompareTabDefault = true
 const repositoryIndicatorsEnabledKey = 'enable-repository-indicators'
+
+/**
+ * Refresh sidebar worktree metadata more sparingly than the repository
+ * indicator loop to avoid repeatedly shelling out to `git worktree list`.
+ */
+const SidebarWorktreeRefreshInterval = 2 * 60 * 1000
 
 // background fetching should occur hourly when Desktop is active, but this
 // lower interval ensures user interactions like switching repositories and
@@ -636,6 +644,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
   private titleBarStyle: TitleBarStyle = 'native'
   private showRecentRepositories: boolean = true
   private showWorktrees: boolean = false
+  private showWorktreesInSidebar: boolean = false
+  private readonly lastSidebarWorktreeRefreshAt = new Map<string, number>()
   private showCompareTab: boolean = showCompareTabDefault
   private hideWindowOnQuit: boolean = __DARWIN__
 
@@ -754,6 +764,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     this.showRecentRepositories = getBoolean(showRecentRepositoriesKey) ?? true
     this.showWorktrees = getBoolean(showWorktreesKey) ?? false
+    this.showWorktreesInSidebar =
+      this.showWorktrees &&
+      (getBoolean(showWorktreesInSidebarKey) ?? false)
     this.showCompareTab = getBoolean(showCompareTabKey, showCompareTabDefault)
 
     this.repositoryIndicatorUpdater = new RepositoryIndicatorUpdater(
@@ -1026,6 +1039,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.repositoriesStore.onDidUpdate(updateRepositories => {
       this.repositories = updateRepositories
       this.updateRepositorySelectionAfterRepositoriesChanged()
+      if (this.showWorktreesInSidebar) {
+        void this.preloadSidebarWorktrees()
+      }
       this.emitUpdate()
     })
 
@@ -1207,6 +1223,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       titleBarStyle: this.titleBarStyle,
       showRecentRepositories: this.showRecentRepositories,
       showWorktrees: this.showWorktrees,
+      showWorktreesInSidebar: this.showWorktreesInSidebar,
       showCompareTab: this.showCompareTab,
       apiRepositories: this.apiRepositoriesStore.getState(),
       useWindowsOpenSSH: this.useWindowsOpenSSH,
@@ -2454,6 +2471,9 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.repositories = repositories
 
     this.updateRepositorySelectionAfterRepositoriesChanged()
+    if (this.showWorktreesInSidebar) {
+      void this.preloadSidebarWorktrees()
+    }
 
     this.sidebarWidth = constrain(
       getNumber(sidebarWidthConfigKey, defaultSidebarWidth)
@@ -3946,6 +3966,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
     const state = this.repositoryStateCache.get(repository)
     const gitStore = this.gitStoreCache.get(repository)
+    const sidebarRepository =
+      this.getSidebarWorktreeStateRepository(repository) ?? repository
 
     // if we cannot get a valid status it's a good indicator that the repository
     // is in a bad state - let's mark it as missing here and give up on the
@@ -3958,10 +3980,50 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return
     }
 
+    if (this.showWorktreesInSidebar) {
+      const existing = this.localRepositoryStateLookup.get(sidebarRepository.id)
+      this.localRepositoryStateLookup.set(sidebarRepository.id, {
+        aheadBehind: existing?.aheadBehind ?? status.branchAheadBehind ?? null,
+        changedFilesCount:
+          existing?.changedFilesCount ?? status.workingDirectory.files.length,
+        branchName: existing?.branchName ?? status.currentBranch ?? null,
+        defaultBranchName:
+          existing?.defaultBranchName ?? sidebarRepository.defaultBranch,
+        isLoadingWorktrees: true,
+        allWorktrees: existing?.allWorktrees ?? [],
+      })
+      this.emitUpdate()
+    }
+
     // loadBranches needs the default remote to determine the default branch
     await gitStore.loadRemotes()
     await gitStore.loadBranches()
     await gitStore.loadWorktrees()
+    this.repositoryStateCache.updateWorktreesState(repository, () => ({
+      allWorktrees: gitStore.allWorktrees,
+      currentWorktree: gitStore.currentWorktree,
+    }))
+    if (sidebarRepository !== repository) {
+      this.repositoryStateCache.updateWorktreesState(sidebarRepository, () => ({
+        allWorktrees: gitStore.allWorktrees,
+        currentWorktree:
+          gitStore.allWorktrees.find(
+            worktree => normalizePath(worktree.path) === normalizePath(sidebarRepository.path)
+          ) ?? null,
+      }))
+    }
+    this.lastSidebarWorktreeRefreshAt.set(repository.hash, Date.now())
+    this.lastSidebarWorktreeRefreshAt.set(sidebarRepository.hash, Date.now())
+    this.updateSidebarIndicator(repository, status)
+    const refreshed = this.localRepositoryStateLookup.get(sidebarRepository.id)
+    if (refreshed !== undefined) {
+      this.localRepositoryStateLookup.set(sidebarRepository.id, {
+        ...refreshed,
+        isLoadingWorktrees: false,
+        allWorktrees: gitStore.allWorktrees,
+      })
+    }
+    this.emitUpdate()
 
     const section = state.selectedSection
     let refreshSectionPromise: Promise<void>
@@ -4013,6 +4075,76 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
   }
 
+  private getSidebarWorktreeStateRepository(repository: Repository) {
+    if (!repository.isLinkedWorktree) {
+      return repository
+    }
+
+    const mainWorktreePath = normalizePath(repository.mainWorktreePath)
+    return (
+      this.repositories.find(
+        candidate => normalizePath(candidate.path) === mainWorktreePath
+      ) ?? repository
+    )
+  }
+
+  private async preloadSidebarWorktrees() {
+    for (const repository of this.repositories) {
+      if (repository.isLinkedWorktree) {
+        continue
+      }
+
+      const existing = this.localRepositoryStateLookup.get(repository.id)
+      this.localRepositoryStateLookup.set(repository.id, {
+        aheadBehind: existing?.aheadBehind ?? null,
+        changedFilesCount: existing?.changedFilesCount ?? 0,
+        branchName: existing?.branchName ?? null,
+        defaultBranchName: existing?.defaultBranchName ?? repository.defaultBranch,
+        isLoadingWorktrees: true,
+        allWorktrees: existing?.allWorktrees ?? [],
+      })
+    }
+    this.emitUpdate()
+
+    for (const repository of this.repositories) {
+      if (repository.isLinkedWorktree) {
+        continue
+      }
+
+      const exists = await pathExists(repository.path)
+      if (!exists) {
+        continue
+      }
+
+      try {
+        const gitStore = this.gitStoreCache.get(repository)
+        await gitStore.loadWorktrees()
+        this.repositoryStateCache.updateWorktreesState(repository, () => ({
+          allWorktrees: gitStore.allWorktrees,
+          currentWorktree: gitStore.currentWorktree,
+        }))
+
+        const existing = this.localRepositoryStateLookup.get(repository.id)
+        if (existing !== undefined) {
+          this.localRepositoryStateLookup.set(repository.id, {
+            ...existing,
+            isLoadingWorktrees: false,
+            allWorktrees: gitStore.allWorktrees,
+          })
+        }
+        this.lastSidebarWorktreeRefreshAt.set(repository.hash, Date.now())
+        this.emitUpdate()
+      } catch (error) {
+        log.warn(
+          `[AppStore] Failed to preload sidebar worktrees for '${nameOf(
+            repository
+          )}'`,
+          error
+        )
+      }
+    }
+  }
+
   private async updateStashEntryCountMetric(
     repository: Repository,
     desktopStashEntryCount: number,
@@ -4057,6 +4189,12 @@ export class AppStore extends TypedBaseStore<IAppState> {
       changedFilesCount: status.workingDirectory.files.length,
       branchName: status.currentBranch || null,
       defaultBranchName: repository.defaultBranch,
+      isLoadingWorktrees:
+        this.showWorktreesInSidebar &&
+        (lookup.get(repository.id)?.isLoadingWorktrees ?? false),
+      allWorktrees: this.showWorktreesInSidebar
+        ? this.repositoryStateCache.get(repository).worktreesState.allWorktrees
+        : [],
     })
   }
   /**
@@ -4083,6 +4221,39 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return
     }
 
+    if (
+      this.showWorktreesInSidebar &&
+      !repository.isLinkedWorktree &&
+      this.shouldRefreshSidebarWorktrees(repository)
+    ) {
+      this.updateSidebarIndicator(repository, status)
+      const existing = lookup.get(repository.id)
+      lookup.set(repository.id, {
+        aheadBehind: existing?.aheadBehind ?? status.branchAheadBehind ?? null,
+        changedFilesCount:
+          existing?.changedFilesCount ?? status.workingDirectory.files.length,
+        branchName: existing?.branchName ?? status.currentBranch ?? null,
+        defaultBranchName: existing?.defaultBranchName ?? repository.defaultBranch,
+        isLoadingWorktrees: true,
+        allWorktrees: existing?.allWorktrees ?? [],
+      })
+      this.emitUpdate()
+
+      await gitStore.loadWorktrees()
+      this.repositoryStateCache.updateWorktreesState(repository, () => ({
+        allWorktrees: gitStore.allWorktrees,
+        currentWorktree: gitStore.currentWorktree,
+      }))
+      const refreshed = lookup.get(repository.id)
+      if (refreshed !== undefined) {
+        lookup.set(repository.id, {
+          ...refreshed,
+          isLoadingWorktrees: false,
+        })
+      }
+      this.lastSidebarWorktreeRefreshAt.set(repository.hash, Date.now())
+    }
+
     this.updateSidebarIndicator(repository, status)
     this.emitUpdate()
 
@@ -4104,9 +4275,25 @@ export class AppStore extends TypedBaseStore<IAppState> {
         changedFilesCount: existing?.changedFilesCount ?? 0,
         branchName: existing?.branchName ?? null,
         defaultBranchName: existing?.defaultBranchName ?? null,
+        isLoadingWorktrees: existing?.isLoadingWorktrees ?? false,
+        allWorktrees: existing?.allWorktrees ?? [],
       })
       this.emitUpdate()
     }
+  }
+
+  private shouldRefreshSidebarWorktrees(repository: Repository) {
+    const lastRefreshedAt =
+      this.lastSidebarWorktreeRefreshAt.get(repository.hash) ?? 0
+
+    if (Date.now() - lastRefreshedAt >= SidebarWorktreeRefreshInterval) {
+      return true
+    }
+
+    const cachedWorktrees =
+      this.repositoryStateCache.get(repository).worktreesState.allWorktrees
+
+    return cachedWorktrees.length === 0
   }
 
   private getRepositoriesForIndicatorRefresh = () => {
@@ -4178,7 +4365,27 @@ export class AppStore extends TypedBaseStore<IAppState> {
     }
     setBoolean(showWorktreesKey, showWorktrees)
     this.showWorktrees = showWorktrees
+    if (!showWorktrees && this.showWorktreesInSidebar) {
+      setBoolean(showWorktreesInSidebarKey, false)
+      this.showWorktreesInSidebar = false
+      this.lastSidebarWorktreeRefreshAt.clear()
+    }
     this.updateResizableConstraints()
+    this.emitUpdate()
+  }
+
+  public _setShowWorktreesInSidebar(showWorktreesInSidebar: boolean) {
+    if (this.showWorktreesInSidebar === showWorktreesInSidebar) {
+      return
+    }
+
+    if (showWorktreesInSidebar && !this.showWorktrees) {
+      return
+    }
+
+    setBoolean(showWorktreesInSidebarKey, showWorktreesInSidebar)
+    this.showWorktreesInSidebar = showWorktreesInSidebar
+    this.lastSidebarWorktreeRefreshAt.clear()
     this.emitUpdate()
   }
 

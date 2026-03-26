@@ -5,6 +5,36 @@ import type { WorktreeEntry, WorktreeType } from '../../models/worktree'
 import { git } from './core'
 import { normalizePath } from '../helpers/path'
 
+function getDotGitPath(repositoryPath: string): string {
+  return Path.join(repositoryPath, '.git')
+}
+
+function getGitDirPathSync(repositoryPath: string): string | null {
+  const dotGit = getDotGitPath(repositoryPath)
+
+  try {
+    // eslint-disable-next-line no-sync
+    const stats = Fs.statSync(dotGit)
+    if (stats.isDirectory()) {
+      return dotGit
+    }
+
+    if (!stats.isFile()) {
+      return null
+    }
+
+    // eslint-disable-next-line no-sync
+    const contents = Fs.readFileSync(dotGit, 'utf8').trim()
+    if (!contents.startsWith('gitdir: ')) {
+      return null
+    }
+
+    return Path.resolve(repositoryPath, contents.substring('gitdir: '.length))
+  } catch {
+    return null
+  }
+}
+
 export function parseWorktreePorcelainOutput(
   stdout: string
 ): ReadonlyArray<WorktreeEntry> {
@@ -141,11 +171,36 @@ export async function getMainWorktreePath(
  */
 export function isLinkedWorktreeSync(repositoryPath: string): boolean {
   try {
-    const dotGit = Path.join(repositoryPath, '.git')
+    const dotGit = getDotGitPath(repositoryPath)
     // eslint-disable-next-line no-sync
     const stats = Fs.statSync(dotGit)
     return stats.isFile()
   } catch {
     return false
+  }
+}
+
+export function getMainWorktreePathSync(repositoryPath: string): string | null {
+  const gitDirPath = getGitDirPathSync(repositoryPath)
+  if (gitDirPath === null) {
+    return null
+  }
+
+  if (!isLinkedWorktreeSync(repositoryPath)) {
+    return repositoryPath
+  }
+
+  try {
+    // eslint-disable-next-line no-sync
+    const commondir = Fs.readFileSync(Path.join(gitDirPath, 'commondir'), 'utf8')
+      .trim()
+    if (commondir.length === 0) {
+      return null
+    }
+
+    const commonGitDir = Path.resolve(gitDirPath, commondir)
+    return Path.dirname(commonGitDir)
+  } catch {
+    return null
   }
 }

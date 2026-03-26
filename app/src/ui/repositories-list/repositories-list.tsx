@@ -27,6 +27,7 @@ import { SectionFilterList } from '../lib/section-filter-list'
 import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
+import { normalizePath } from '../../lib/helpers/path'
 
 const BlankSlateImage = encodePathAsUrl(__dirname, 'static/empty-no-repo.svg')
 
@@ -82,6 +83,7 @@ interface IRepositoriesListProps {
 
   /** Controls when to show the branch name next to each repository */
   readonly showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+  readonly showWorktreesInSidebar: boolean
 }
 
 interface IRepositoriesListState {
@@ -105,7 +107,12 @@ function findMatchingListItem(
   if (selectedRepository !== null) {
     for (const group of groups) {
       for (const item of group.items) {
-        if (item.repository.id === selectedRepository.id) {
+        if (
+          item.repository.id === selectedRepository.id ||
+          (item.worktreePath !== null &&
+            normalizePath(item.worktreePath) ===
+              normalizePath(selectedRepository.path))
+        ) {
           return item
         }
       }
@@ -113,6 +120,10 @@ function findMatchingListItem(
   }
 
   return null
+}
+
+function isPullableRepository(repository: Repositoryish): repository is Repository {
+  return repository instanceof Repository && !repository.isLinkedWorktree
 }
 
 /** The list of user-added repositories. */
@@ -130,14 +141,16 @@ export class RepositoriesList extends React.Component<
     (
       repositories: ReadonlyArray<Repositoryish> | null,
       localRepositoryStateLookup: ReadonlyMap<number, ILocalRepositoryState>,
-      recentRepositories: ReadonlyArray<number>
+      recentRepositories: ReadonlyArray<number>,
+      showWorktreesInSidebar: boolean
     ) =>
       repositories === null
         ? []
         : groupRepositories(
             repositories,
             localRepositoryStateLookup,
-            recentRepositories
+            recentRepositories,
+            { showWorktreesInSidebar }
           )
   )
 
@@ -184,12 +197,16 @@ export class RepositoriesList extends React.Component<
     return (
       <RepositoryListItem
         key={repository.id}
+        title={item.title}
         repository={repository}
         needsDisambiguation={item.needsDisambiguation}
         matches={matches}
         aheadBehind={item.aheadBehind}
         changedFilesCount={item.changedFilesCount}
         branchName={this.shouldShowBranchName(item) ? item.branchName : null}
+        isNestedWorktree={item.isNestedWorktree}
+        mainWorktreeName={item.mainWorktreeName}
+        isLoadingNestedWorktrees={item.isLoadingNestedWorktrees}
       />
     )
   }
@@ -311,6 +328,11 @@ export class RepositoriesList extends React.Component<
   }
 
   private onItemClick = (item: IRepositoryListItem) => {
+    if (item.isVirtualLinkedWorktree && item.worktreePath !== null) {
+      this.onVirtualWorktreeClick(item)
+      return
+    }
+
     const hasIndicator =
       item.changedFilesCount > 0 ||
       (item.aheadBehind !== null
@@ -320,10 +342,40 @@ export class RepositoriesList extends React.Component<
     this.props.onSelectionChanged(item.repository)
   }
 
+  private onVirtualWorktreeClick = async (item: IRepositoryListItem) => {
+    if (item.worktreePath === null || item.sourceRepository === null) {
+      return
+    }
+
+    const existingRepo = this.props.repositories.find(
+      r =>
+        r instanceof Repository &&
+        normalizePath(r.path) === normalizePath(item.worktreePath as string)
+    )
+
+    if (existingRepo instanceof Repository) {
+      await this.props.dispatcher.selectRepository(existingRepo)
+      return
+    }
+
+    const addedRepos = await this.props.dispatcher.addRepositories(
+      [item.worktreePath],
+      item.sourceRepository.login
+    )
+
+    if (addedRepos.length > 0) {
+      await this.props.dispatcher.selectRepository(addedRepos[0])
+    }
+  }
+
   private onItemContextMenu = (
     item: IRepositoryListItem,
     event: React.MouseEvent<HTMLDivElement>
   ) => {
+    if (item.isVirtualLinkedWorktree) {
+      return
+    }
+
     event.preventDefault()
 
     const items = generateRepositoryListContextMenu({
@@ -361,7 +413,8 @@ export class RepositoriesList extends React.Component<
     let groups = this.getRepositoryGroups(
       this.props.repositories,
       this.props.localRepositoryStateLookup,
-      this.props.recentRepositories
+      this.props.recentRepositories,
+      this.props.showWorktreesInSidebar
     )
 
     if (!this.props.showRecentRepositories) {
@@ -505,14 +558,26 @@ export class RepositoriesList extends React.Component<
   private onPullRepositoriesButtonClick = async () => {
     this.setState({ pullingRepositories: true })
     try {
+      const repositoriesToPull = this.props.repositories.reduce<Repository[]>(
+        (repos, repository) => {
+          if (isPullableRepository(repository)) {
+            repos.push(repository)
+          }
+
+          return repos
+        },
+        []
+      )
+
       await Promise.all(
-        this.props.repositories
-          .filter(r => r instanceof Repository)
-          .map(r =>
-            this.props.dispatcher.pull(r).catch(e => {
-              throw Error(`Error pulling '${r.name}' (${r.path}):\n${e}`, e)
-            })
-          )
+        repositoriesToPull.map(repository =>
+          this.props.dispatcher.pull(repository).catch(e => {
+            throw Error(
+              `Error pulling '${repository.name}' (${repository.path}):\n${e}`,
+              e
+            )
+          })
+        )
       )
     } catch (e) {
       this.props.dispatcher.postError(e)
