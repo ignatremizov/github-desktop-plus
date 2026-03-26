@@ -1,11 +1,13 @@
 import { spawn } from 'child_process'
-import { basename, resolve } from 'path'
+import { basename, resolve, join } from 'path'
 import { ProcessProxyConnection as Connection } from 'process-proxy'
 import type { HookCallbackOptions } from '../git'
 import { resolveGitBinary } from 'dugite'
 import { ShellEnvResult } from './get-shell-env'
 import { shellFriendlyNames } from './config'
 import { Writable } from 'stream'
+import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 
 const ignoredOnFailureHooks = [
   'post-applypatch',
@@ -64,6 +66,29 @@ const exitWithMessage = (conn: Connection, msg: string, exitCode = 0) =>
 const exitWithError = (conn: Connection, msg: string, exitCode = 1) =>
   exitWithMessage(conn, msg, exitCode)
 
+const readStdin = (stream: NodeJS.ReadableStream) =>
+  new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = []
+
+    stream.on('data', chunk => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    })
+    stream.on('end', () => resolve(Buffer.concat(chunks)))
+    stream.on('error', reject)
+  })
+
+const createStdinFile = (content: Buffer) => {
+  const dir = mkdtempSync(join(tmpdir(), 'github-desktop-hooks-'))
+  const filePath = join(dir, 'stdin.txt')
+
+  writeFileSync(filePath, content)
+
+  return {
+    filePath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  }
+}
+
 export const createHooksProxy = (
   getShellEnv: (cwd: string) => Promise<ShellEnvResult>,
   onHookProgress?: HookCallbackOptions['onHookProgress'],
@@ -102,6 +127,8 @@ export const createHooksProxy = (
       return
     }
 
+    const stdinFile = hasStdin ? createStdinFile(await readStdin(conn.stdin)) : null
+
     const args = [
       ...['hook', 'run', hookName],
       // We always copy our pre-auto-gc hook in order to be able to tell the
@@ -110,7 +137,7 @@ export const createHooksProxy = (
       // pre-auto-gc hook configured themselves, so we tell Git to ignore
       // missing hooks here.
       ...(hookName === 'pre-auto-gc' ? ['--ignore-missing'] : []),
-      ...(hasStdin ? ['--to-stdin=/dev/stdin'] : []),
+      ...(stdinFile ? [`--to-stdin=${stdinFile.filePath}`] : []),
       '--',
       ...proxyArgs.slice(1),
     ]
@@ -157,8 +184,10 @@ export const createHooksProxy = (
       // https://github.com/git/git/blob/4cf919bd7b946477798af5414a371b23fd68bf93/hook.c#L73C6-L73C22
       child.stderr.pipe(conn.stderr, { end: false }).on('error', reject)
       child.stderr.on('data', data => terminalOutput.push(data))
-      conn.stdin.pipe(child.stdin).on('error', reject)
+      child.stdin.end()
     })
+
+    stdinFile?.cleanup()
 
     const dur = `after ${((Date.now() - startTime) / 1000).toFixed(2)}s`
     const prefix = `${hookName} hook`
