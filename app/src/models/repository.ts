@@ -250,6 +250,11 @@ export interface ILocalRepositoryState {
    * All worktrees known for this repository.
    */
   readonly allWorktrees: ReadonlyArray<WorktreeEntry>
+
+  /**
+   * Whether worktree discovery for the sidebar is currently in progress.
+   */
+  readonly isLoadingWorktrees: boolean
 }
 
 /**

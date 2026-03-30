@@ -249,6 +249,7 @@ describe('repository list grouping', () => {
         changedFilesCount: 0,
         branchName: 'main',
         defaultBranchName: 'main',
+        isLoadingWorktrees: false,
         allWorktrees,
       })
 
@@ -282,6 +283,7 @@ describe('repository list grouping', () => {
       aheadBehind: null,
       branchName: 'main',
       defaultBranchName: 'main',
+      isLoadingWorktrees: false,
       allWorktrees: [
         {
           path: '/tmp/repo',
@@ -374,6 +376,7 @@ describe('repository list grouping', () => {
         changedFilesCount: 0,
         branchName: 'main',
         defaultBranchName: 'main',
+        isLoadingWorktrees: false,
         allWorktrees,
       })
 
@@ -434,6 +437,7 @@ describe('repository list grouping', () => {
         changedFilesCount: 0,
         branchName: 'feature/a',
         defaultBranchName: 'main',
+        isLoadingWorktrees: false,
         allWorktrees: [
           {
             path: mainRepoPath,
@@ -474,6 +478,41 @@ describe('repository list grouping', () => {
       assert.equal(grouped[0].items[0].repository.path, linkedRepoPath)
       assert.equal(grouped[0].items[0].isNestedWorktree, false)
       assert.equal(grouped[0].items[0].title, 'custom alias')
+    } finally {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('marks main repositories as loading while nested worktrees are being discovered', async () => {
+    const tempRoot = await mkdtemp(
+      path.join(os.tmpdir(), 'github-desktop-plus-worktree-loading-')
+    )
+    try {
+      const mainRepoPath = path.join(tempRoot, 'repo')
+      const mainRepo = new Repository(
+        mainRepoPath,
+        11,
+        gitHubRepoFixture({ owner: 'example', name: 'repo' }),
+        false
+      )
+
+      cache.set(mainRepo.id, {
+        aheadBehind: null,
+        changedFilesCount: 0,
+        branchName: 'main',
+        defaultBranchName: 'main',
+        isLoadingWorktrees: true,
+        allWorktrees: [],
+      })
+
+      const grouped = groupRepositories([mainRepo], cache, [], {
+        showWorktreesInSidebar: true,
+      })
+
+      assert.equal(grouped.length, 1)
+      assert.equal(grouped[0].items.length, 1)
+      assert.equal(grouped[0].items[0].repository.path, mainRepoPath)
+      assert.equal(grouped[0].items[0].isLoadingNestedWorktrees, true)
     } finally {
       await rm(tempRoot, { recursive: true, force: true })
     }

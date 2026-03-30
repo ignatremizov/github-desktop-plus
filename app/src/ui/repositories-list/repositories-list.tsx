@@ -236,6 +236,7 @@ export class RepositoriesList extends React.Component<
         branchName={this.shouldShowBranchName(item) ? item.branchName : null}
         isNestedWorktree={item.isNestedWorktree}
         mainWorktreeName={item.mainWorktreeName}
+        isLoadingNestedWorktrees={item.isLoadingNestedWorktrees}
         isPrunableWorktree={item.isPrunableWorktree}
       />
     )

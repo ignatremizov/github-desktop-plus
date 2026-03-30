@@ -190,6 +190,11 @@ export function toSortedRepositoryListItems({
       defaultBranchName,
       isNestedWorktree,
       mainWorktreeName,
+      isLoadingNestedWorktrees:
+        !isNestedWorktree &&
+        !isVirtualLinkedWorktree &&
+        repository instanceof Repository &&
+        (repoState?.isLoadingWorktrees ?? false),
       isVirtualLinkedWorktree,
       isPrunableWorktree: startupWorktreeEntry?.isPrunable ?? false,
       worktreePath: options?.worktreePath ?? null,

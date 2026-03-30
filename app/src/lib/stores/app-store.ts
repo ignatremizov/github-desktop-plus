@@ -384,6 +384,8 @@ import { createTutorialRepository } from './helpers/create-tutorial-repository'
 import { findRemoteBranchName } from './helpers/find-branch-name'
 import { RepositoryIndicatorUpdater } from './helpers/repository-indicator-updater'
 import {
+  createInitialLoadingSidebarState,
+  createLoadingSidebarState,
   createSidebarStateFromStatus,
   findSidebarWorktreeStateRepository,
   getCurrentWorktreeEntryForRepository,
@@ -4076,6 +4078,17 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return
     }
 
+    if (this.showWorktreesInSidebar) {
+      const existing = this.localRepositoryStateLookup.get(sidebarRepository.id)
+      this.localRepositoryStateLookup.set(
+        sidebarRepository.id,
+        sidebarRepository === repository
+          ? createLoadingSidebarState(sidebarRepository, status, existing)
+          : createInitialLoadingSidebarState(sidebarRepository, existing)
+      )
+      this.emitUpdate()
+    }
+
     // loadBranches needs the default remote to determine the default branch
     await gitStore.loadRemotes()
     await gitStore.loadBranches()
@@ -4162,6 +4175,15 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
   private async preloadSidebarWorktrees() {
     const limit = pLimit(MaxConcurrentSidebarWorktreePreloads)
+
+    for (const repository of this.repositories) {
+      const existing = this.localRepositoryStateLookup.get(repository.id)
+      this.localRepositoryStateLookup.set(
+        repository.id,
+        createInitialLoadingSidebarState(repository, existing)
+      )
+    }
+    this.emitUpdate()
 
     await Promise.all(
       this.repositories.map(repository =>
@@ -4301,6 +4323,13 @@ export class AppStore extends TypedBaseStore<IAppState> {
         this.lastSidebarWorktreeRefreshAt.get(sidebarRepository.hash)
       )
     ) {
+      const existing = lookup.get(sidebarRepository.id)
+      lookup.set(
+        sidebarRepository.id,
+        createInitialLoadingSidebarState(sidebarRepository, existing)
+      )
+      this.emitUpdate()
+
       const sidebarGitStore = this.gitStoreCache.get(sidebarRepository)
       await sidebarGitStore.loadWorktrees()
       this.repositoryStateCache.updateWorktreesState(sidebarRepository, () => ({
@@ -4338,6 +4367,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
         changedFilesCount: existing?.changedFilesCount ?? 0,
         branchName: existing?.branchName ?? null,
         defaultBranchName: existing?.defaultBranchName ?? null,
+        isLoadingWorktrees: existing?.isLoadingWorktrees ?? false,
         allWorktrees: existing?.allWorktrees ?? [],
       })
       this.emitUpdate()

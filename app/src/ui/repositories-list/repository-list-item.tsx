@@ -33,6 +33,7 @@ interface IRepositoryListItemProps {
   readonly branchName: string | null
   readonly isNestedWorktree: boolean
   readonly mainWorktreeName: string | null
+  readonly isLoadingNestedWorktrees: boolean
   readonly isPrunableWorktree: boolean
 }
 
@@ -97,6 +98,9 @@ export class RepositoryListItem extends React.Component<
             {this.props.branchName}
           </span>
         )}
+        {this.props.isLoadingNestedWorktrees && (
+          <span className="worktrees-loading">Loading worktrees...</span>
+        )}
         {this.props.isPrunableWorktree && renderPrunableIndicator()}
         {repository instanceof Repository &&
           renderRepoIndicators({
@@ -145,6 +149,8 @@ export class RepositoryListItem extends React.Component<
         nextProps.aheadBehind !== this.props.aheadBehind ||
         nextProps.changedFilesCount !== this.props.changedFilesCount ||
         nextProps.isNestedWorktree !== this.props.isNestedWorktree ||
+        nextProps.isLoadingNestedWorktrees !==
+          this.props.isLoadingNestedWorktrees ||
         nextProps.mainWorktreeName !== this.props.mainWorktreeName ||
         nextProps.isPrunableWorktree !== this.props.isPrunableWorktree
       )

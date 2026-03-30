@@ -70,6 +70,7 @@ export interface IRepositoryListItem extends IFilterListItem {
   readonly defaultBranchName: string | null
   readonly isNestedWorktree: boolean
   readonly mainWorktreeName: string | null
+  readonly isLoadingNestedWorktrees: boolean
   readonly isVirtualLinkedWorktree: boolean
   readonly isPrunableWorktree: boolean
   readonly worktreePath: string | null
