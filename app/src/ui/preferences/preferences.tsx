@@ -59,6 +59,7 @@ import {
   setGitHookEnvShell,
   setHooksEnvEnabled,
 } from '../../lib/hooks/config'
+import { enableCopilotSdkCommitMessageGeneration } from '../../lib/feature-flag'
 
 interface IPreferencesProps {
   readonly dispatcher: Dispatcher
@@ -256,7 +257,9 @@ export class Preferences extends React.Component<
     ])
 
     // Kick off Copilot model list fetch (non-blocking)
-    this.props.dispatcher.fetchCopilotModels()
+    if (this.isCopilotSdkEnabled) {
+      this.props.dispatcher.fetchCopilotModels()
+    }
 
     const availableEditors = editors.map(e => e.editor) ?? null
     const availableShells = shells.map(e => e.shell) ?? null
@@ -318,7 +321,7 @@ export class Preferences extends React.Component<
           {this.renderDisallowedCharactersError()}
           <TabBar
             onTabClicked={this.onTabClicked}
-            selectedIndex={this.state.selectedIndex}
+            selectedIndex={this.tabToVisualIndex(this.state.selectedIndex)}
             type={TabBarType.Vertical}
           >
             <span id={this.getTabId(PreferencesTab.Accounts)}>
@@ -329,10 +332,12 @@ export class Preferences extends React.Component<
               <Octicon className="icon" symbol={octicons.person} />
               Integrations
             </span>
-            <span id={this.getTabId(PreferencesTab.Copilot)}>
-              <Octicon className="icon" symbol={octicons.copilot} />
-              Copilot
-            </span>
+            {this.isCopilotSdkEnabled && (
+              <span id={this.getTabId(PreferencesTab.Copilot)}>
+                <Octicon className="icon" symbol={octicons.copilot} />
+                Copilot
+              </span>
+            )}
             <span id={this.getTabId(PreferencesTab.Git)}>
               <Octicon className="icon" symbol={octicons.gitCommit} />
               Git
@@ -948,7 +953,27 @@ export class Preferences extends React.Component<
     this.props.onDismissed()
   }
 
-  private onTabClicked = (index: number) => {
-    this.setState({ selectedIndex: index })
+  private onTabClicked = (visualIndex: number) => {
+    this.setState({ selectedIndex: this.visualIndexToTab(visualIndex) })
+  }
+
+  private get isCopilotSdkEnabled(): boolean {
+    return this.props.accounts
+      .filter(isDotComAccount)
+      .some(enableCopilotSdkCommitMessageGeneration)
+  }
+
+  private tabToVisualIndex(tab: PreferencesTab): number {
+    if (!this.isCopilotSdkEnabled && tab > PreferencesTab.Copilot) {
+      return tab - 1
+    }
+    return tab
+  }
+
+  private visualIndexToTab(index: number): PreferencesTab {
+    if (!this.isCopilotSdkEnabled && index >= PreferencesTab.Copilot) {
+      return index + 1
+    }
+    return index
   }
 }
