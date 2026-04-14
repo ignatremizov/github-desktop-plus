@@ -114,6 +114,7 @@ export enum PopupType {
   RenameWorktree = 'RenameWorktree',
   DeleteWorktree = 'DeleteWorktree',
   CantDeleteCurrentBranch = 'CantDeleteCurrentBranch',
+  CantDeleteMainBranch = 'CantDeleteMainBranch',
   CantDeleteCurrentBranchUncommittedChanges = 'CantDeleteCurrentBranchUncommittedChanges',
   CantDeleteWorktreeUncommittedChanges = 'CantDeleteWorktreeUncommittedChanges',
 }
@@ -132,6 +133,11 @@ export type PopupDetail =
       repository: Repository
       branchToDelete: Branch
       blockedByBranch: Branch
+    }
+  | {
+      type: PopupType.CantDeleteMainBranch
+      repository: Repository
+      branchToDelete: Branch
     }
   | {
       type: PopupType.CantDeleteCurrentBranchUncommittedChanges

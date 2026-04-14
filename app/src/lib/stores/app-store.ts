@@ -5281,20 +5281,17 @@ export class AppStore extends TypedBaseStore<IAppState> {
       // we need to switch to a different branch (default or recent).
       const branchToCheckout =
         toCheckout ?? this.getBranchToCheckoutAfterDelete(branch, repository)
+      const deletingMainBranch =
+        branchToCheckout === null || branchToCheckout.ref === branch.ref
 
-      if (branchToCheckout !== null) {
-        const { changesState } = this.repositoryStateCache.get(repository)
-        const hasChanges = changesState.workingDirectory.files.length > 0
-
-        if (hasChanges) {
-          this._showPopup({
-            type: PopupType.CantDeleteCurrentBranchUncommittedChanges,
-            repository,
-            branchToDelete: branch,
-          })
-          return
-        }
-
+      if (deletingMainBranch) {
+        this._showPopup({
+          type: PopupType.CantDeleteMainBranch,
+          repository,
+          branchToDelete: branch,
+        })
+        return
+      } else {
         const worktrees = await listWorktrees(repository)
         const branchRef = `refs/heads/${branchToCheckout.name}`
         const inUseInAnotherWorktree = worktrees.some(
@@ -5310,9 +5307,21 @@ export class AppStore extends TypedBaseStore<IAppState> {
           return
         }
 
-        await gitStore.performFailableOperation(() =>
-          checkoutBranch(repository, branchToCheckout, gitStore.currentRemote)
-        )
+        try {
+          await checkoutBranch(
+            repository,
+            branchToCheckout,
+            gitStore.currentRemote
+          )
+        } catch (e) {
+          console.warn(e)
+          this._showPopup({
+            type: PopupType.CantDeleteCurrentBranchUncommittedChanges,
+            repository,
+            branchToDelete: branch,
+          })
+          return
+        }
       }
 
       await gitStore.performFailableOperation(() => {

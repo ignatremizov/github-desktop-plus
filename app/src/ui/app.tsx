@@ -218,6 +218,7 @@ import { RenameWorktreeDialog } from './worktrees/rename-worktree-dialog'
 import { DeleteWorktreeDialog } from './worktrees/delete-worktree-dialog'
 import { CantDeleteWorktreeUncommittedChanges } from './worktrees/cant-delete-worktree-uncommitted-changes-dialog'
 import { getEditorOverrideLabel } from '../models/editor-override'
+import { CantDeleteMainBranch } from './delete-branch/cant-delete-main-branch'
 
 const MinuteInMilliseconds = 1000 * 60
 const HourInMilliseconds = MinuteInMilliseconds * 60
@@ -1590,6 +1591,14 @@ export class App extends React.Component<IAppProps, IAppState> {
             key="cant-delete-current-branch"
             branchToDelete={popup.branchToDelete}
             blockedByBranch={popup.blockedByBranch}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      case PopupType.CantDeleteMainBranch:
+        return (
+          <CantDeleteMainBranch
+            key="cant-delete-main-branch"
+            branchToDelete={popup.branchToDelete}
             onDismissed={onPopupDismissedFn}
           />
         )
