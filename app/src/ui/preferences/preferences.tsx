@@ -60,6 +60,19 @@ import {
   setHooksEnvEnabled,
 } from '../../lib/hooks/config'
 import { enableCopilotSdkCommitMessageGeneration } from '../../lib/feature-flag'
+import {
+  DateFormat,
+  TimeFormat,
+  INumberFormat,
+  getPreferAbsoluteDates,
+  getDateFormatPreference,
+  getTimeFormatPreference,
+  getNumberFormatPreference,
+  setDateFormatPreference,
+  setTimeFormatPreference,
+  setNumberFormatPreference,
+} from '../../models/formatting-preferences'
+import { enableFormattingPreferences } from '../../lib/feature-flag'
 
 interface IPreferencesProps {
   readonly dispatcher: Dispatcher
@@ -159,6 +172,10 @@ interface IPreferencesState {
   readonly hooksPreferencesDirty: boolean
 
   readonly selectedCopilotModel: string | null
+  readonly selectedDateFormat?: DateFormat
+  readonly selectedTimeFormat?: TimeFormat
+  readonly selectedNumberFormat?: INumberFormat
+  readonly preferAbsoluteDates?: boolean
 }
 
 /**
@@ -222,6 +239,10 @@ export class Preferences extends React.Component<
       selectedGitHookEnvShell: getGitHookEnvShell(),
       hooksPreferencesDirty: false,
       selectedCopilotModel: this.props.selectedCopilotModel,
+      selectedDateFormat: getDateFormatPreference(),
+      selectedTimeFormat: getTimeFormatPreference(),
+      selectedNumberFormat: getNumberFormatPreference(),
+      preferAbsoluteDates: getPreferAbsoluteDates(),
     }
   }
 
@@ -545,6 +566,22 @@ export class Preferences extends React.Component<
             onSelectedThemeChanged={this.onSelectedThemeChanged}
             selectedTabSize={this.props.selectedTabSize}
             onSelectedTabSizeChanged={this.onSelectedTabSizeChanged}
+            selectedDateFormat={
+              this.state.selectedDateFormat ?? getDateFormatPreference()
+            }
+            onSelectedDateFormatChanged={this.onSelectedDateFormatChanged}
+            selectedTimeFormat={
+              this.state.selectedTimeFormat ?? getTimeFormatPreference()
+            }
+            onSelectedTimeFormatChanged={this.onSelectedTimeFormatChanged}
+            selectedNumberFormat={
+              this.state.selectedNumberFormat ?? getNumberFormatPreference()
+            }
+            onSelectedNumberFormatChanged={this.onSelectedNumberFormatChanged}
+            preferAbsoluteDates={
+              this.state.preferAbsoluteDates ?? getPreferAbsoluteDates()
+            }
+            onPreferAbsoluteDatesChanged={this.onPreferAbsoluteDatesChanged}
           />
         )
         break
@@ -750,6 +787,24 @@ export class Preferences extends React.Component<
     this.setState({ selectedShell: shell })
   }
 
+  private onSelectedDateFormatChanged = (selectedDateFormat: DateFormat) => {
+    this.setState({ selectedDateFormat })
+  }
+
+  private onSelectedTimeFormatChanged = (selectedTimeFormat: TimeFormat) => {
+    this.setState({ selectedTimeFormat })
+  }
+
+  private onSelectedNumberFormatChanged = (
+    selectedNumberFormat: INumberFormat
+  ) => {
+    this.setState({ selectedNumberFormat })
+  }
+
+  private onPreferAbsoluteDatesChanged = (preferAbsoluteDates: boolean) => {
+    this.setState({ preferAbsoluteDates })
+  }
+
   private onUseCustomEditorChanged = (useCustomEditor: boolean) => {
     this.setState({ useCustomEditor })
   }
@@ -949,6 +1004,24 @@ export class Preferences extends React.Component<
     dispatcher.setDiffCheckMarksSetting(this.state.showDiffCheckMarks)
 
     dispatcher.setSelectedCopilotModel(this.state.selectedCopilotModel)
+    
+    if (enableFormattingPreferences()) {
+      if (this.state.selectedDateFormat !== undefined) {
+        setDateFormatPreference(this.state.selectedDateFormat)
+      }
+
+      if (this.state.selectedTimeFormat !== undefined) {
+        setTimeFormatPreference(this.state.selectedTimeFormat)
+      }
+
+      if (this.state.selectedNumberFormat !== undefined) {
+        setNumberFormatPreference(this.state.selectedNumberFormat)
+      }
+
+      if (this.state.preferAbsoluteDates !== undefined) {
+        dispatcher.setPreferAbsoluteDates(this.state.preferAbsoluteDates)
+      }
+    }
 
     this.props.onDismissed()
   }

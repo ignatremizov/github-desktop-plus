@@ -9,6 +9,7 @@ import {
 import { Emitter, Disposable } from 'event-kit'
 import * as ipcRenderer from '../ipc-renderer'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 
 /** The default model ID used for Copilot commit message generation. */
 export const DefaultCopilotModel = 'gpt-5-mini'
@@ -193,11 +194,19 @@ export class CopilotStore {
     // CLI fails to parse the arguments correctly, so we ended up using --eval
     // and just importing the index.js from the CLI as a workaround.
     const cliDir = getCopilotCLIDir()
+    let importPath = join(cliDir, 'index.js')
+
+    if (__WIN32__) {
+      // On Windows, we need the import path to be a valid file:// URL.
+      importPath = pathToFileURL(importPath).href
+    }
+
     return new CopilotClient({
       cliPath: await getCopilotCLIPath(),
-      cliArgs: ['--eval', `import '${join(cliDir, 'index.js')}'`, '--'],
+      cliArgs: ['--eval', `import '${importPath}'`, '--'],
       env: {
         ELECTRON_RUN_AS_NODE: '1',
+        COPILOT_RUN_APP: '1',
       },
       cwd: repositoryPath,
       autoStart: true,

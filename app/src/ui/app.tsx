@@ -2396,6 +2396,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             emoji={emoji}
             onDismissed={onPopupDismissedFn}
             accounts={this.state.accounts}
+            preferAbsoluteDates={this.state.preferAbsoluteDates}
           />
         )
       }
@@ -3464,6 +3465,7 @@ export class App extends React.Component<IAppProps, IAppState> {
           hideWhitespaceInChangesDiff={state.hideWhitespaceInChangesDiff}
           hideWhitespaceInHistoryDiff={state.hideWhitespaceInHistoryDiff}
           showDiffCheckMarks={state.showDiffCheckMarks}
+          preferAbsoluteDates={state.preferAbsoluteDates}
           showSideBySideDiff={state.showSideBySideDiff}
           focusCommitMessage={state.focusCommitMessage}
           askForConfirmationOnDiscardChanges={
