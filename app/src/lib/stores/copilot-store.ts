@@ -6,10 +6,10 @@ import {
   ICopilotCommitMessage,
   parseCopilotCommitMessage,
 } from '../copilot-commit-message'
-import { Emitter, Disposable } from 'event-kit'
 import * as ipcRenderer from '../ipc-renderer'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
+import { BaseStore } from './base-store'
 
 /** The default model ID used for Copilot commit message generation. */
 export const DefaultCopilotModel = 'gpt-5-mini'
@@ -124,8 +124,7 @@ export function getPreferredDefaultModel(
  *
  * Currently, Copilot is only available for GitHub.com accounts.
  */
-export class CopilotStore {
-  private readonly emitter = new Emitter()
+export class CopilotStore extends BaseStore {
   private currentAccount: Account | null = null
 
   private cachedModels: ReadonlyArray<ModelInfo> | null = null
@@ -133,6 +132,7 @@ export class CopilotStore {
   private modelsInFlight: Promise<ReadonlyArray<ModelInfo>> | null = null
 
   public constructor(private readonly accountsStore: AccountsStore) {
+    super()
     this.accountsStore.onDidUpdate(this.onAccountsUpdated)
     this.initializeFromAccounts()
   }
@@ -162,15 +162,13 @@ export class CopilotStore {
 
     if (dotComAccount === null) {
       log.debug('CopilotStore: No GitHub.com account available')
-      this.emitter.emit('did-update')
+      this.emitUpdate()
     } else {
       log.debug(`CopilotStore: Account updated for '${dotComAccount.login}'`)
       // Proactively fetch models so they are ready when the user opens the
       // Copilot tab in Settings, even if they signed in without reopening
       // the dialog.
-      this.getCachedModels()
-        .then(() => this.emitter.emit('did-update'))
-        .catch(() => this.emitter.emit('did-update'))
+      this.getCachedModels().then(this.emitUpdate, this.emitUpdate)
     }
   }
 
@@ -371,27 +369,5 @@ export class CopilotStore {
     } finally {
       await this.stopClient(client)
     }
-  }
-
-  /**
-   * Register a function to be called when the store state changes
-   * (e.g. account change, model list refresh).
-   */
-  public onDidUpdate(fn: () => void): Disposable {
-    return this.emitter.on('did-update', fn)
-  }
-
-  /**
-   * Register a function to be called when an error occurs.
-   */
-  public onDidError(fn: (e: Error) => void): Disposable {
-    return this.emitter.on('did-error', fn)
-  }
-
-  /**
-   * Emits an error event.
-   */
-  protected emitError(error: Error): void {
-    this.emitter.emit('did-error', error)
   }
 }
