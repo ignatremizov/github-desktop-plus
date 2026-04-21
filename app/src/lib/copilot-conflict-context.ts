@@ -1,4 +1,4 @@
-import { readFile } from 'fs/promises'
+import { readFile, stat } from 'fs/promises'
 import { extname } from 'path'
 
 import { Repository } from '../models/repository'
@@ -258,8 +258,23 @@ export async function buildConflictContext(
 
   for (const file of files) {
     // Guard against path traversal and symlink escapes (cross-platform)
-    const absolutePath = await resolveWithin(workingDirectory, file.path)
+    let absolutePath: string | null
+    try {
+      absolutePath = await resolveWithin(workingDirectory, file.path)
+    } catch {
+      continue
+    }
     if (absolutePath === null) {
+      continue
+    }
+
+    // Check file size before reading to avoid loading huge files into memory
+    try {
+      const fileStat = await stat(absolutePath)
+      if (fileStat.size > MAX_CONFLICT_FILE_SIZE) {
+        continue
+      }
+    } catch {
       continue
     }
 
@@ -269,11 +284,6 @@ export async function buildConflictContext(
       content = await readFile(absolutePath, 'utf8')
     } catch {
       // Skip files that can't be read as UTF-8 (e.g. binary files)
-      continue
-    }
-
-    // Skip very large files to avoid exceeding LLM token limits
-    if (content.length > MAX_CONFLICT_FILE_SIZE) {
       continue
     }
 
@@ -357,7 +367,8 @@ export function formatConflictContextForPrompt(
 
   for (const file of context.files) {
     const lang = getLangFromPath(file.path)
-    parts.push(`## File: ${file.path}`)
+    const safePath = sanitizeForMarkdown(file.path)
+    parts.push(`## File: ${safePath}`)
     parts.push('')
 
     for (let i = 0; i < file.hunks.length; i++) {
@@ -399,7 +410,9 @@ export function formatConflictContextForPrompt(
 /** Extract a language identifier from a file path for use in code fences. */
 function getLangFromPath(filePath: string): string {
   const ext = extname(filePath)
-  return ext.startsWith('.') ? ext.slice(1) : ''
+  const lang = ext.startsWith('.') ? ext.slice(1) : ''
+  // Only allow safe alphanumeric language tags
+  return /^[a-zA-Z0-9]+$/.test(lang) ? lang : ''
 }
 
 /**
@@ -418,4 +431,9 @@ function makeFencedBlock(content: string, lang: string = ''): string {
   }
   const fence = '`'.repeat(Math.max(3, maxRun + 1))
   return `${fence}${lang}\n${content}\n${fence}`
+}
+
+/** Strip characters that could break markdown structure when used in headings/labels. */
+function sanitizeForMarkdown(text: string): string {
+  return text.replace(/[\r\n`]/g, '')
 }
