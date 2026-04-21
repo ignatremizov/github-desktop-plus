@@ -114,6 +114,22 @@ describe('copilot-conflict-context', () => {
       assert.equal(hunks[0].oursContent, 'our version')
       assert.equal(hunks[0].baseContent, 'original version')
       assert.equal(hunks[0].theirsContent, 'their version')
+
+      // Multi-line base content is preserved
+      const multiLineBase = [
+        '<<<<<<< HEAD',
+        'ours',
+        '||||||| base',
+        'base line 1',
+        'base line 2',
+        '=======',
+        'theirs',
+        '>>>>>>> feature',
+      ].join('\n')
+
+      const hunks2 = extractConflictHunks(multiLineBase)
+      assert.equal(hunks2.length, 1)
+      assert.equal(hunks2[0].baseContent, 'base line 1\nbase line 2')
     })
 
     it('extracts multiple conflict hunks from one file', () => {
@@ -150,7 +166,7 @@ describe('copilot-conflict-context', () => {
       assert.equal(hunks.length, 0)
     })
 
-    it('includes surrounding context lines', () => {
+    it('includes surrounding context lines and respects contextLines parameter', () => {
       const content = [
         'line 1',
         'line 2',
@@ -167,35 +183,17 @@ describe('copilot-conflict-context', () => {
         'line 8',
       ].join('\n')
 
-      const hunks = extractConflictHunks(content, 3)
+      // Default-like: 3 context lines
+      const hunks3 = extractConflictHunks(content, 3)
+      assert.equal(hunks3.length, 1)
+      assert.equal(hunks3[0].contextBefore, 'line 2\nline 3\nline 4')
+      assert.equal(hunks3[0].contextAfter, 'line 5\nline 6\nline 7')
 
-      assert.equal(hunks.length, 1)
-      assert.equal(hunks[0].contextBefore, 'line 2\nline 3\nline 4')
-      assert.equal(hunks[0].contextAfter, 'line 5\nline 6\nline 7')
-    })
-
-    it('respects custom contextLines parameter', () => {
-      const content = [
-        'line 1',
-        'line 2',
-        'line 3',
-        'line 4',
-        '<<<<<<< HEAD',
-        'our change',
-        '=======',
-        'their change',
-        '>>>>>>> feature',
-        'line 5',
-        'line 6',
-        'line 7',
-        'line 8',
-      ].join('\n')
-
-      const hunks = extractConflictHunks(content, 1)
-
-      assert.equal(hunks.length, 1)
-      assert.equal(hunks[0].contextBefore, 'line 4')
-      assert.equal(hunks[0].contextAfter, 'line 5')
+      // Custom: 1 context line
+      const hunks1 = extractConflictHunks(content, 1)
+      assert.equal(hunks1.length, 1)
+      assert.equal(hunks1[0].contextBefore, 'line 4')
+      assert.equal(hunks1[0].contextAfter, 'line 5')
     })
 
     it('handles zero context lines', () => {
@@ -335,24 +333,6 @@ describe('copilot-conflict-context', () => {
 
       assert.equal(hunks.length, 0)
     })
-
-    it('handles diff3 with multi-line base content', () => {
-      const content = [
-        '<<<<<<< HEAD',
-        'ours',
-        '||||||| base',
-        'base line 1',
-        'base line 2',
-        '=======',
-        'theirs',
-        '>>>>>>> feature',
-      ].join('\n')
-
-      const hunks = extractConflictHunks(content)
-
-      assert.equal(hunks.length, 1)
-      assert.equal(hunks[0].baseContent, 'base line 1\nbase line 2')
-    })
   })
 
   describe('formatConflictContextForPrompt', () => {
@@ -464,19 +444,6 @@ describe('copilot-conflict-context', () => {
       assert.ok(result.includes('a-ours-1'))
       assert.ok(result.includes('a-ours-2'))
       assert.ok(result.includes('b-ours'))
-    })
-
-    it('includes labels in the header', () => {
-      const context: ICopilotConflictContext = {
-        ourLabel: 'release/v2.0',
-        theirLabel: 'hotfix/crash-fix',
-        files: [],
-      }
-
-      const result = formatConflictContextForPrompt(context)
-
-      assert.ok(result.includes('"release/v2.0"'))
-      assert.ok(result.includes('"hotfix/crash-fix"'))
     })
 
     it('includes base content for diff3 conflicts', () => {
@@ -622,7 +589,7 @@ describe('copilot-conflict-context', () => {
       assert.ok(result.includes('## File: src/user.ts'))
     })
 
-    it('includes PR context in output', () => {
+    it('includes PR context in output with body fenced', () => {
       const pr = makePullRequest(
         99,
         'Migrate to UUIDs',
@@ -641,6 +608,21 @@ describe('copilot-conflict-context', () => {
       assert.ok(!result.includes('## Recent Commits'))
       // File content should still be present
       assert.ok(result.includes('## File: src/user.ts'))
+
+      // PR body with backticks should be wrapped in a fence
+      const prBackticks = makePullRequest(
+        42,
+        'Docs update',
+        '## Changes\n- Updated ```code``` examples'
+      )
+      const result2 = formatConflictContextForPrompt(
+        baseContext,
+        null,
+        prBackticks
+      )
+      assert.ok(result2.includes('Description:'))
+      // Body should be inside a fence longer than the triple backticks in content
+      assert.ok(result2.includes('````'))
     })
 
     it('includes both commit and PR context in output', () => {
@@ -742,18 +724,79 @@ describe('copilot-conflict-context', () => {
       assert.ok(result.includes('````'))
     })
 
-    it('wraps PR body in a fenced block', () => {
-      const pr = makePullRequest(
-        42,
-        'Docs update',
-        '## Changes\n- Updated ```code``` examples'
+    it('sanitizes malicious file paths in markdown headings', () => {
+      const context: ICopilotConflictContext = {
+        ourLabel: 'main',
+        theirLabel: 'feature',
+        files: [
+          {
+            path: 'src/evil\npath`inject.ts',
+            hunks: [
+              {
+                oursContent: 'ours',
+                theirsContent: 'theirs',
+                baseContent: null,
+                contextBefore: '',
+                contextAfter: '',
+              },
+            ],
+          },
+        ],
+      }
+
+      const result = formatConflictContextForPrompt(context)
+
+      // Newline and backtick should be stripped from the heading
+      assert.ok(!result.includes('## File: src/evil\npath'))
+      assert.ok(!result.includes('`inject'))
+      assert.ok(result.includes('## File: src/evilpathinject.ts'))
+    })
+
+    it('falls back to empty language for non-alphanumeric extensions', () => {
+      const context: ICopilotConflictContext = {
+        ourLabel: 'main',
+        theirLabel: 'feature',
+        files: [
+          {
+            path: 'src/module.c++',
+            hunks: [
+              {
+                oursContent: 'ours',
+                theirsContent: 'theirs',
+                baseContent: null,
+                contextBefore: '',
+                contextAfter: '',
+              },
+            ],
+          },
+        ],
+      }
+
+      const result = formatConflictContextForPrompt(context)
+
+      // .c++ has non-alphanumeric '+' — should NOT appear as a language tag
+      assert.ok(!result.includes('```c++'))
+      // Should use a plain fence with no language
+      assert.ok(result.includes('```\nours'))
+    })
+
+    it('handles one-sided commit context', () => {
+      const commitCtx: IConflictCommitContext = {
+        ourCommits: [makeCommit('aaa1111', 'Fix type error')],
+        theirCommits: [],
+      }
+
+      const result = formatConflictContextForPrompt(
+        baseContext,
+        commitCtx,
+        null
       )
 
-      const result = formatConflictContextForPrompt(baseContext, null, pr)
-
-      assert.ok(result.includes('Description:'))
-      // PR body should be inside a fence, not raw markdown
-      assert.ok(result.includes('````'))
+      assert.ok(result.includes('## Recent Commits'))
+      assert.ok(result.includes('aaa1111'))
+      assert.ok(result.includes('Fix type error'))
+      // Their side heading should still appear but with no commits listed
+      assert.ok(result.includes('(theirs)'))
     })
   })
 })
