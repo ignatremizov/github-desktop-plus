@@ -204,9 +204,9 @@ export type ConflictResolutionProgress =
 const SinglePromptFileLimit = 20
 
 /**
- * Chunk sizes used when batching files across parallel prompts.
- * Smaller chunks for very large conflicts reduce token usage and
- * improve reliability.
+ * Compute the target chunk size based on total file count.
+ * Smaller chunks at high file counts protect output quality — large
+ * responses are more likely to truncate or produce malformed JSON.
  */
 function getChunkSize(fileCount: number): number {
   return fileCount > 100 ? 15 : 20
