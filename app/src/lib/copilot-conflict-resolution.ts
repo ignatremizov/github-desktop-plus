@@ -1,8 +1,14 @@
 /**
- * Prefix for errors that are safe to retry (parse/validation failures).
- * Visible in logs so it's clear a retry was attempted.
+ * Error subclass for parse and validation failures from Copilot responses.
+ * Used to distinguish retryable errors (bad LLM output) from transport
+ * errors (timeouts, auth, session creation) which should fail fast.
  */
-export const RetryableErrorPrefix = 'Retry: '
+export class CopilotValidationError extends Error {
+  public constructor(message: string) {
+    super(message)
+    this.name = 'CopilotValidationError'
+  }
+}
 
 /** Resolution suggestion for a single conflicted file. */
 export interface IFileResolution {
@@ -62,8 +68,8 @@ export function parseCopilotConflictResolution(
       parseError = undefined
       break
     } catch {
-      parseError = new Error(
-        `${RetryableErrorPrefix}Copilot returned invalid JSON for conflict resolution generation`
+      parseError = new CopilotValidationError(
+        'Copilot returned invalid JSON for conflict resolution generation'
       )
     }
   }
@@ -72,22 +78,22 @@ export function parseCopilotConflictResolution(
   }
 
   if (!isRecord(parsed)) {
-    throw new Error(
-      `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: expected an object`
+    throw new CopilotValidationError(
+      'Copilot returned an invalid conflict resolution payload: expected an object'
     )
   }
 
   const { resolutions } = parsed
 
   if (!Array.isArray(resolutions)) {
-    throw new Error(
-      `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "resolutions" must be an array`
+    throw new CopilotValidationError(
+      'Copilot returned an invalid conflict resolution payload: "resolutions" must be an array'
     )
   }
 
   if (resolutions.length === 0) {
-    throw new Error(
-      `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "resolutions" must not be empty`
+    throw new CopilotValidationError(
+      'Copilot returned an invalid conflict resolution payload: "resolutions" must not be empty'
     )
   }
 
@@ -97,34 +103,34 @@ export function parseCopilotConflictResolution(
     const entry: unknown = resolutions[i]
 
     if (!isRecord(entry)) {
-      throw new Error(
-        `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: resolution at index ${i} must be an object`
+      throw new CopilotValidationError(
+        `Copilot returned an invalid conflict resolution payload: resolution at index ${i} must be an object`
       )
     }
 
     const { path, resolvedContent, reasoning } = entry
 
     if (typeof path !== 'string' || path.trim().length === 0) {
-      throw new Error(
-        `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "path" at index ${i} must be a non-empty string`
+      throw new CopilotValidationError(
+        `Copilot returned an invalid conflict resolution payload: "path" at index ${i} must be a non-empty string`
       )
     }
 
     if (typeof resolvedContent !== 'string') {
-      throw new Error(
-        `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "resolvedContent" at index ${i} must be a string`
+      throw new CopilotValidationError(
+        `Copilot returned an invalid conflict resolution payload: "resolvedContent" at index ${i} must be a string`
       )
     }
 
     if (/^<{7}\s/m.test(resolvedContent) && /^={7}$/m.test(resolvedContent)) {
-      throw new Error(
-        `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "resolvedContent" at index ${i} still contains conflict markers`
+      throw new CopilotValidationError(
+        `Copilot returned an invalid conflict resolution payload: "resolvedContent" at index ${i} still contains conflict markers`
       )
     }
 
     if (typeof reasoning !== 'string' || reasoning.trim().length === 0) {
-      throw new Error(
-        `${RetryableErrorPrefix}Copilot returned an invalid conflict resolution payload: "reasoning" at index ${i} must be a non-empty string`
+      throw new CopilotValidationError(
+        `Copilot returned an invalid conflict resolution payload: "reasoning" at index ${i} must be a non-empty string`
       )
     }
 

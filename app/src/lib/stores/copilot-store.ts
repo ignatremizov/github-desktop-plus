@@ -7,9 +7,9 @@ import {
   parseCopilotCommitMessage,
 } from '../copilot-commit-message'
 import {
+  CopilotValidationError,
   ICopilotConflictResolutionResponse,
   IFileResolution,
-  RetryableErrorPrefix,
   parseCopilotConflictResolution,
 } from '../copilot-conflict-resolution'
 import {
@@ -527,16 +527,16 @@ export class CopilotStore extends BaseStore {
         const returnedPaths = new Set(parsed.resolutions.map(r => r.path))
         for (const path of returnedPaths) {
           if (!expectedPaths.has(path)) {
-            throw new Error(
-              `${RetryableErrorPrefix}Copilot returned resolution for unexpected file: ${path}`
+            throw new CopilotValidationError(
+              `Copilot returned resolution for unexpected file: ${path}`
             )
           }
         }
 
         // Check for duplicate paths
         if (returnedPaths.size !== parsed.resolutions.length) {
-          throw new Error(
-            `${RetryableErrorPrefix}Copilot returned duplicate file paths in resolutions`
+          throw new CopilotValidationError(
+            'Copilot returned duplicate file paths in resolutions'
           )
         }
 
@@ -548,10 +548,8 @@ export class CopilotStore extends BaseStore {
           }
         }
         if (missingPaths.length > 0) {
-          throw new Error(
-            `${RetryableErrorPrefix}Copilot did not return resolutions for: ${missingPaths.join(
-              ', '
-            )}`
+          throw new CopilotValidationError(
+            `Copilot did not return resolutions for: ${missingPaths.join(', ')}`
           )
         }
 
@@ -561,7 +559,7 @@ export class CopilotStore extends BaseStore {
 
         // Only retry on parse/validation failures — fail fast on
         // transport errors (timeouts, auth, session creation).
-        const isRetryable = lastError.message.startsWith(RetryableErrorPrefix)
+        const isRetryable = lastError instanceof CopilotValidationError
 
         if (!isRetryable || attempt > 0) {
           break
