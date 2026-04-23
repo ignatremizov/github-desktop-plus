@@ -107,6 +107,20 @@ Important:
 // ---------------------------------------------------------------------------
 
 /**
+ * Normalize a file path returned by the LLM. The model may return
+ * Windows-style backslashes (`src\\file.ts`), a leading `./`, or redundant
+ * separators — all of which would cause validation to reject an otherwise
+ * correct resolution.
+ */
+function normalizeLLMPath(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/^\.\//, '')
+    .replace(/\/\/+/g, '/')
+}
+
+/**
  * Parse the raw string response from the Copilot SDK into a structured
  * conflict resolution response.
  *
@@ -212,7 +226,7 @@ export function parseCopilotConflictResolution(
       )
     }
 
-    validated.push({ path: path.trim(), resolvedContent, reasoning })
+    validated.push({ path: normalizeLLMPath(path), resolvedContent, reasoning })
   }
 
   return { resolutions: validated }

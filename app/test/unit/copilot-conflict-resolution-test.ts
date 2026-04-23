@@ -266,6 +266,48 @@ describe('parseCopilotConflictResolution', () => {
     const result = parseCopilotConflictResolution(json)
     assert.equal(result.resolutions[0].path, 'src/file.ts')
   })
+
+  it('normalizes Windows-style backslash separators', () => {
+    const json = JSON.stringify({
+      resolutions: [
+        {
+          path: 'src\\lib\\file.ts',
+          resolvedContent: 'content',
+          reasoning: 'reason',
+        },
+      ],
+    })
+    const result = parseCopilotConflictResolution(json)
+    assert.equal(result.resolutions[0].path, 'src/lib/file.ts')
+  })
+
+  it('strips leading ./ from paths', () => {
+    const json = JSON.stringify({
+      resolutions: [
+        {
+          path: './src/file.ts',
+          resolvedContent: 'content',
+          reasoning: 'reason',
+        },
+      ],
+    })
+    const result = parseCopilotConflictResolution(json)
+    assert.equal(result.resolutions[0].path, 'src/file.ts')
+  })
+
+  it('collapses redundant path separators', () => {
+    const json = JSON.stringify({
+      resolutions: [
+        {
+          path: 'src//lib///file.ts',
+          resolvedContent: 'content',
+          reasoning: 'reason',
+        },
+      ],
+    })
+    const result = parseCopilotConflictResolution(json)
+    assert.equal(result.resolutions[0].path, 'src/lib/file.ts')
+  })
 })
 
 // ---------------------------------------------------------------------------
