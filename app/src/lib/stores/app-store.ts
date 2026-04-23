@@ -8743,12 +8743,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
     provider: IBYOKProvider,
     secret: string | null
   ): Promise<void> {
-    this.byokProviders = [...this.byokProviders, provider]
-    saveBYOKProviders(this.byokProviders)
-
+    // Write the secret first so a keychain failure doesn't leave a provider
+    // in localStorage without its credentials.
     if (secret !== null && secret.length > 0) {
       await setBYOKSecret(provider.id, secret)
     }
+
+    this.byokProviders = [...this.byokProviders, provider]
+    saveBYOKProviders(this.byokProviders)
 
     this.emitUpdate()
   }
@@ -8769,16 +8771,18 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return this._addCopilotBYOKProvider(provider, secret ?? null)
     }
 
-    const updated = [...this.byokProviders]
-    updated[idx] = provider
-    this.byokProviders = updated
-    saveBYOKProviders(this.byokProviders)
-
+    // Apply the keychain change first; if it throws, the persisted provider
+    // and its in-memory copy stay consistent with the existing secret.
     if (secret === null) {
       await deleteBYOKSecret(provider.id)
     } else if (secret !== undefined && secret.length > 0) {
       await setBYOKSecret(provider.id, secret)
     }
+
+    const updated = [...this.byokProviders]
+    updated[idx] = provider
+    this.byokProviders = updated
+    saveBYOKProviders(this.byokProviders)
 
     // If the user removed the model that was selected for any feature, fall
     // back to the default for that feature.
@@ -8793,10 +8797,13 @@ export class AppStore extends TypedBaseStore<IAppState> {
       return
     }
 
+    // Purge the secret first; on failure we keep the provider visible so the
+    // user can retry rather than ending up with an orphaned keychain entry
+    // and no UI to manage it.
+    await deleteBYOKSecret(id)
+
     this.byokProviders = this.byokProviders.filter(p => p.id !== id)
     saveBYOKProviders(this.byokProviders)
-
-    await deleteBYOKSecret(id)
 
     this.scrubMissingCopilotModelSelections()
 
