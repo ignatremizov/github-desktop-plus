@@ -1,4 +1,4 @@
-import { Disposable, DisposableLike } from 'event-kit'
+import { Disposable } from 'event-kit'
 import { clipboard } from 'electron'
 
 import {
@@ -51,6 +51,10 @@ import {
 import { Shell } from '../../lib/shells'
 import { ILaunchStats, StatsStore } from '../../lib/stats'
 import { AppStore } from '../../lib/stores/app-store'
+import type {
+  CopilotFeature,
+  CopilotModelSelections,
+} from '../../lib/stores/copilot-store'
 import { RepositoryStateCache } from '../../lib/stores/repository-state-cache'
 import { getTipSha } from '../../lib/tip'
 
@@ -106,7 +110,6 @@ import { MergeTreeResult } from '../../models/merge'
 import { UncommittedChangesStrategy } from '../../models/uncommitted-changes-strategy'
 import { BranchSortOrder } from '../../models/branch-sort-order'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
-import { CommitDateDisplay } from '../../models/commit-date-display'
 import { DiffFontFamily } from '../../models/diff-font'
 import { CopyPathNormalization } from '../../models/copy-path-normalization'
 import { IStashEntry } from '../../models/stash-entry'
@@ -409,6 +412,10 @@ export class Dispatcher {
    */
   public refreshRepository(repository: Repository): Promise<void> {
     return this.appStore._refreshOrRecoverRepository(repository)
+  }
+
+  public async loadStatusLight(repository: Repository): Promise<void> {
+    await this.appStore._loadStatusLight(repository)
   }
 
   /**
@@ -2802,7 +2809,7 @@ export class Dispatcher {
     ref: string,
     callback: StatusCallBack,
     branchName?: string
-  ): DisposableLike {
+  ): Disposable {
     return this.commitStatusStore.subscribe(
       repository,
       ref,
@@ -4291,8 +4298,8 @@ export class Dispatcher {
     return this.appStore._updateBranchSortOrder(branchSortOrder)
   }
 
-  public setCommitDateDisplay(commitDateDisplay: CommitDateDisplay) {
-    return this.appStore._updateCommitDateDisplay(commitDateDisplay)
+  public setPreferAbsoluteDates(value: boolean) {
+    return this.appStore._setPreferAbsoluteDates(value)
   }
 
   public testPruneBranches() {
@@ -4355,5 +4362,23 @@ export class Dispatcher {
 
   public toggleChangesFilterVisibility() {
     this.appStore._toggleChangesFilterVisibility()
+  }
+
+  /** Set the selected Copilot model for a specific feature. */
+  public setSelectedCopilotModel(
+    feature: CopilotFeature,
+    model: string | null
+  ) {
+    return this.appStore._setSelectedCopilotModel(feature, model)
+  }
+
+  /** Replace all per-feature Copilot model selections at once. */
+  public setSelectedCopilotModels(models: CopilotModelSelections) {
+    return this.appStore._setSelectedCopilotModels(models)
+  }
+
+  /** Fetch the list of available Copilot models from the SDK. */
+  public fetchCopilotModels(): Promise<void> {
+    return this.appStore._fetchCopilotModels()
   }
 }

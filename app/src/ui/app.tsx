@@ -218,6 +218,7 @@ import { RenameWorktreeDialog } from './worktrees/rename-worktree-dialog'
 import { DeleteWorktreeDialog } from './worktrees/delete-worktree-dialog'
 import { CantDeleteWorktreeUncommittedChanges } from './worktrees/cant-delete-worktree-uncommitted-changes-dialog'
 import { getEditorOverrideLabel } from '../models/editor-override'
+import { CantDeleteMainBranch } from './delete-branch/cant-delete-main-branch'
 
 const MinuteInMilliseconds = 1000 * 60
 const HourInMilliseconds = MinuteInMilliseconds * 60
@@ -1593,6 +1594,14 @@ export class App extends React.Component<IAppProps, IAppState> {
             onDismissed={onPopupDismissedFn}
           />
         )
+      case PopupType.CantDeleteMainBranch:
+        return (
+          <CantDeleteMainBranch
+            key="cant-delete-main-branch"
+            branchToDelete={popup.branchToDelete}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
       case PopupType.CantDeleteCurrentBranchUncommittedChanges:
         return (
           <CantDeleteCurrentBranchUncommittedChanges
@@ -1722,8 +1731,10 @@ export class App extends React.Component<IAppProps, IAppState> {
             showDiffCheckMarks={this.state.showDiffCheckMarks}
             showBranchNameInRepoList={this.state.showBranchNameInRepoList}
             branchSortOrder={this.state.branchSortOrder}
-            commitDateDisplay={this.state.commitDateDisplay}
             copyPathNormalization={this.state.copyPathNormalization}
+            selectedCopilotModels={this.state.selectedCopilotModels}
+            copilotModels={this.state.copilotModels}
+            copilotAvailable={this.state.copilotAvailable}
           />
         )
       case PopupType.RepositorySettings: {
@@ -2536,6 +2547,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             emoji={emoji}
             onDismissed={onPopupDismissedFn}
             accounts={this.state.accounts}
+            preferAbsoluteDates={this.state.preferAbsoluteDates}
           />
         )
       }
@@ -3768,12 +3780,12 @@ export class App extends React.Component<IAppProps, IAppState> {
           issuesStore={this.props.issuesStore}
           gitHubUserStore={this.props.gitHubUserStore}
           branchSortOrder={state.branchSortOrder}
-          commitDateDisplay={state.commitDateDisplay}
           onViewCommitOnGitHub={this.onViewCommitOnGitHub}
           imageDiffType={state.imageDiffType}
           hideWhitespaceInChangesDiff={state.hideWhitespaceInChangesDiff}
           hideWhitespaceInHistoryDiff={state.hideWhitespaceInHistoryDiff}
           showDiffCheckMarks={state.showDiffCheckMarks}
+          preferAbsoluteDates={state.preferAbsoluteDates}
           showSideBySideDiff={state.showSideBySideDiff}
           showDiffMinimap={state.showDiffMinimap}
           focusCommitMessage={state.focusCommitMessage}

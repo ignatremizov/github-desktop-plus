@@ -120,6 +120,9 @@ class TrampolineUIHelper {
 
   public async getLoginForRepositoryPath(path: string): Promise<string | null> {
     const repo = await this.dispatcher.getRepositoryForPath(path)
+    if (repo) {
+      await this.dispatcher.loadStatusLight(repo)
+    }
     return repo?.login ?? null
   }
 }
