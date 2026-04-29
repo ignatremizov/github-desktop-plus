@@ -203,13 +203,19 @@ describe('CopilotPreferences', () => {
     const select = view.container.querySelector('select') as HTMLSelectElement
     fireEvent.change(select, {
       target: {
-        value: encodeModelKey({ kind: 'copilot', modelId: DefaultCopilotModel }),
+        value: encodeModelKey({
+          kind: 'copilot',
+          modelId: DefaultCopilotModel,
+        }),
       },
     })
     assert.deepStrictEqual(changed, [
       {
         feature: 'commit-message-generation',
-        model: encodeModelKey({ kind: 'copilot', modelId: DefaultCopilotModel }),
+        model: encodeModelKey({
+          kind: 'copilot',
+          modelId: DefaultCopilotModel,
+        }),
       },
     ])
   })
