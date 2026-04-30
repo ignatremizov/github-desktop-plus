@@ -529,11 +529,24 @@ dialog {
 
       &.copilot-tab {
         padding: 0;
+        // Lay the (optional) tab bar and the content area out as a column so
+        // the content area can flex to fill the dialog's `min-height` without
+        // having to set its own (which would push the dialog taller than the
+        // other preferences tabs and cause the dialog to "jump" in height
+        // when switching between them).
+        display: flex;
+        flex-direction: column;
 
         .copilot-tab-content {
           padding: var(--spacing-double);
           max-height: $default-tab-height;
           overflow: auto;
+          display: flex;
+          flex-direction: column;
+          flex: 1 1 auto;
+          // Allow the flex item to shrink below its intrinsic content height
+          // so that `overflow: auto` actually kicks in when content is tall.
+          min-height: 0;
         }
       }
     }

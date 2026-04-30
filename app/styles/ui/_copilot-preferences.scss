@@ -92,6 +92,37 @@
       flex-shrink: 0;
     }
   }
+
+  .copilot-customization-hints {
+    margin-top: var(--spacing);
+    color: var(--text-secondary-color);
+    font-size: var(--font-size-sm);
+
+    p {
+      margin: 0 0 var(--spacing-half);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    code {
+      font-family: var(--font-family-monospace);
+      font-size: 0.95em;
+      padding: 0 0.25em;
+      border-radius: var(--border-radius);
+      background: var(--box-selected-background-color);
+    }
+  }
+
+  // Customization hints rendered as a direct child of `.copilot-tab-content`
+  // are anchored to the bottom of the tab and visually separated from the
+  // section above with a top border.
+  .copilot-tab-content > .copilot-customization-hints {
+    margin-top: auto;
+    padding-top: var(--spacing);
+    border-top: var(--base-border);
+  }
 }
 
 #edit-copilot-byok-provider {
