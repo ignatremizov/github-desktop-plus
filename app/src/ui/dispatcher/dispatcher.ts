@@ -1124,6 +1124,24 @@ export class Dispatcher {
     return this.appStore._resolveConflictsWithCopilot(repository, onProgress)
   }
 
+  /**
+   * Start the full Copilot conflict resolution flow: call the API and
+   * transition to the result dialog.
+   */
+  public startCopilotConflictResolution(repository: Repository): Promise<void> {
+    return this.appStore._startCopilotConflictResolution(repository)
+  }
+
+  /**
+   * Write Copilot-resolved file contents to disk and stage them.
+   * Called when the user confirms the resolutions from the result dialog.
+   */
+  public applyCopilotConflictResolutions(
+    repository: Repository
+  ): Promise<void> {
+    return this.appStore._applyCopilotConflictResolutions(repository)
+  }
+
   /** Remove the given account from the app. */
   public removeAccount(account: Account): Promise<void> {
     return this.appStore._removeAccount(account)

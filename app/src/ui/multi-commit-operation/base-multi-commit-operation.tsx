@@ -83,6 +83,9 @@ export abstract class BaseMultiCommitOperation extends React.Component<IMultiCom
       },
       true
     )
+
+    // Fire-and-forget: the orchestrator handles transitions on success/failure
+    dispatcher.startCopilotConflictResolution(repository)
   }
 
   protected onFlowEnded = () => {
@@ -270,6 +273,7 @@ export abstract class BaseMultiCommitOperation extends React.Component<IMultiCom
             repository={this.props.repository}
             dispatcher={this.props.dispatcher}
             conflictState={step.conflictState}
+            progress={this.props.state.copilotResolutionProgress}
           />
         )
       case MultiCommitOperationStepKind.ShowCopilotConflicts:
