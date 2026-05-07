@@ -70,8 +70,12 @@ async function getAppBundleID(path: string) {
  */
 export function expandTargetPathArgument(
   args: ReadonlyArray<string>,
-  repoPath: string
+  repoPath: string,
+  spawnedFromShell = false
 ): ReadonlyArray<string> {
+  if (!spawnedFromShell) {
+    return args.map(arg => arg.replaceAll(TargetPathArgument, repoPath))
+  }
   return args.map(arg =>
     arg
       // If the placeholder is already quoted (e.g. "%TARGET_PATH%"), replace
