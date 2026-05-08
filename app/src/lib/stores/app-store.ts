@@ -698,7 +698,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
   private selectedTabSize = tabSizeDefault
   private selectedDiffFontSize = defaultDiffFontSize
   private selectedDiffFontFamily = defaultDiffFontFamily
-  private titleBarStyle: TitleBarStyle = 'native'
+  private titleBarStyle: TitleBarStyle = __WIN32__ ? 'custom' : 'native'
   private showRecentRepositories: boolean = true
   private showWorktrees: boolean = false
   private showWorktreesInSidebar: boolean = false
