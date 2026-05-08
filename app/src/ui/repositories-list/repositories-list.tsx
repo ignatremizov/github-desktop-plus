@@ -763,13 +763,32 @@ export class RepositoriesList extends React.Component<
     this.props.dispatcher.changeRepositoryGroupName(repository, null)
   }
 
+  private getWorktreeFamily(repository: Repository): ReadonlyArray<Repository> {
+    const mainPath = normalizePath(
+      repository.isLinkedWorktree
+        ? repository.mainWorktreePath
+        : repository.path
+    )
+    return this.props.repositories.filter(
+      (r): r is Repository =>
+        r instanceof Repository &&
+        (normalizePath(r.path) === mainPath ||
+          (r.isLinkedWorktree &&
+            normalizePath(r.mainWorktreePath) === mainPath))
+    )
+  }
+
   private onPinRepository = (repository: Repository) => {
-    addPinnedRepository(repository)
+    for (const r of this.getWorktreeFamily(repository)) {
+      addPinnedRepository(r)
+    }
     this.setState({ pinnedRepositoriesIds: getPinnedRepositories() })
   }
 
   private onUnpinRepository = (repository: Repository) => {
-    removePinnedRepository(repository)
+    for (const r of this.getWorktreeFamily(repository)) {
+      removePinnedRepository(r)
+    }
     this.setState({ pinnedRepositoriesIds: getPinnedRepositories() })
   }
 }
