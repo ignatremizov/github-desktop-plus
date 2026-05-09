@@ -12,6 +12,7 @@ Upstream: [GitHub Desktop 3.5.9-beta2 release notes](https://github.com/desktop/
 - [#149] Allow pinning repositories to the top of the repo list.  
   To pin a repository, right-click on it in the list and select "Pin to top".
 
+- The selected commit in the history view now remains visible after clearing the search query.
 
 ## **Fixes:**
 

@@ -596,6 +596,17 @@ export class CommitList extends React.Component<
     this.listRef.current?.focus()
   }
 
+  public scrollToSelectedCommit() {
+    const { selectedSHAs } = this.props
+    if (selectedSHAs.length === 0) {
+      return
+    }
+    const row = this.rowForSHA(selectedSHAs[0])
+    if (row !== -1) {
+      this.listRef.current?.scrollToRow(row)
+    }
+  }
+
   public render() {
     const {
       commitSHAs,
