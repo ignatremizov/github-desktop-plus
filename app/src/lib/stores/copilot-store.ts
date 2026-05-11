@@ -488,18 +488,12 @@ export class CopilotStore extends BaseStore {
     })
 
     try {
-      try {
-        return await session.sendAndWait(options, timeoutMs)
-      } catch (e) {
-        if (paymentRequiredError === undefined) {
-          throw e
-        }
-        throw paymentRequiredError
-      }
+      return await session.sendAndWait(options, timeoutMs)
+    } catch (e) {
+      throw paymentRequiredError ?? e
     } finally {
       unsubscribe()
     }
-  }
 
   /**
    * Generates a commit message for the given diff using Copilot.
