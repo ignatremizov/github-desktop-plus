@@ -1,6 +1,6 @@
-GitHub Desktop Plus v3.5.9-beta2
+GitHub Desktop Plus v3.5.9-beta3
 
-Upstream: [GitHub Desktop 3.5.9-beta2 release notes](https://github.com/desktop/desktop/releases/tag/release-3.5.9-beta2)
+Upstream: [GitHub Desktop 3.5.9-beta3 release notes](https://github.com/desktop/desktop/releases/tag/release-3.5.9-beta3)
 
 ---
 
