@@ -587,9 +587,11 @@ export class CommitGraphSidebar extends React.Component<
           ariaPressed={
             this.state.commitGraphViewMode === CommitGraphViewMode.List
           }
+          ariaLabel="List view"
+          tooltip="List view"
           onClick={this.commitGraph_onListModeClicked}
         >
-          List
+          <Octicon symbol={octicons.listUnordered} />
         </Button>
         <Button
           size="small"
@@ -600,9 +602,11 @@ export class CommitGraphSidebar extends React.Component<
           ariaPressed={
             this.state.commitGraphViewMode === CommitGraphViewMode.Tree
           }
+          ariaLabel="Graph view"
+          tooltip="Graph view"
           onClick={this.commitGraph_onTreeModeClicked}
         >
-          Tree
+          <Octicon symbol={octicons.gitBranch} />
         </Button>
       </div>
     )
