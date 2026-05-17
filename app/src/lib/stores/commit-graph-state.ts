@@ -8,25 +8,31 @@ const commitGraph_CollapsedBranchGroupsKeyPrefix =
   'commitGraph-collapsed-branch-groups'
 const commitGraph_ViewModeKey = 'commitGraph-view-mode'
 const commitGraph_DefaultCollapsedBranchGroups = ['origin', 'upstream', 'tags']
-const commitGraph_DefaultViewMode: CommitGraphViewModePreference = 'tree'
+
+export enum CommitHistoryViewMode {
+  List = 'list',
+  Graph = 'graph',
+}
+
+const DEFAULT_COMMIT_GRAPH_VIEW_MODE = CommitHistoryViewMode.List
 
 export const commitGraph_DefaultBranchListWidth = 180
 export const commitGraph_BranchListWidthConfigKey =
   'commitGraph-branch-list-width'
 
-export type CommitGraphViewModePreference = 'list' | 'tree'
-
-export function commitGraph_getStoredViewMode(): CommitGraphViewModePreference {
+export function commitGraph_getStoredViewMode(): CommitHistoryViewMode {
   const value = localStorage.getItem(commitGraph_ViewModeKey)
-
-  return value === 'list' || value === 'tree'
-    ? value
-    : commitGraph_DefaultViewMode
+  switch (value) {
+    case CommitHistoryViewMode.List:
+      return CommitHistoryViewMode.List
+    case CommitHistoryViewMode.Graph:
+      return CommitHistoryViewMode.Graph
+    default:
+      return DEFAULT_COMMIT_GRAPH_VIEW_MODE
+  }
 }
 
-export function commitGraph_setStoredViewMode(
-  viewMode: CommitGraphViewModePreference
-) {
+export function commitGraph_setStoredViewMode(viewMode: CommitHistoryViewMode) {
   localStorage.setItem(commitGraph_ViewModeKey, viewMode)
 }
 

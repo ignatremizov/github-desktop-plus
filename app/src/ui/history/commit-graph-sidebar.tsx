@@ -5,6 +5,7 @@ import { ICompareState, IConstrainedValue } from '../../lib/app-state'
 import {
   commitGraph_getStoredViewMode,
   commitGraph_setStoredViewMode,
+  CommitHistoryViewMode,
 } from '../../lib/stores/commit-graph-state'
 import { Repository } from '../../models/repository'
 import { Branch, BranchType } from '../../models/branch'
@@ -36,17 +37,6 @@ import {
   ICommitGraphRow,
 } from './commit-graph-model'
 import { CommitGraphCommitListItem } from './commit-graph-commit-list-item'
-
-enum CommitGraphViewMode {
-  List = 'list',
-  Tree = 'tree',
-}
-
-function commitGraph_getInitialViewMode() {
-  return commitGraph_getStoredViewMode() === 'list'
-    ? CommitGraphViewMode.List
-    : CommitGraphViewMode.Tree
-}
 
 type CommitGraphBranchGroup =
   | 'local'
@@ -90,7 +80,7 @@ interface ICommitGraphSidebarProps {
 interface ICommitGraphSidebarState {
   readonly keyboardReorderData?: KeyboardInsertionData
   readonly isSearching: boolean
-  readonly commitGraphViewMode: CommitGraphViewMode
+  readonly commitGraphViewMode: CommitHistoryViewMode
   readonly commitGraphSelectedBranchRef: string | null
 }
 
@@ -527,7 +517,7 @@ export class CommitGraphSidebar extends React.Component<
 
     this.state = {
       isSearching: false,
-      commitGraphViewMode: commitGraph_getInitialViewMode(),
+      commitGraphViewMode: commitGraph_getStoredViewMode(),
       commitGraphSelectedBranchRef: null,
     }
   }
@@ -568,7 +558,7 @@ export class CommitGraphSidebar extends React.Component<
           {this.commitGraph_renderViewModeSwitch()}
         </div>
 
-        {this.state.commitGraphViewMode === CommitGraphViewMode.Tree
+        {this.state.commitGraphViewMode === CommitHistoryViewMode.Graph
           ? this.commitGraph_renderView()
           : this.renderCommitList(false)}
       </div>
@@ -582,10 +572,10 @@ export class CommitGraphSidebar extends React.Component<
           size="small"
           className={classNames('button-group-item', {
             selected:
-              this.state.commitGraphViewMode === CommitGraphViewMode.List,
+              this.state.commitGraphViewMode === CommitHistoryViewMode.List,
           })}
           ariaPressed={
-            this.state.commitGraphViewMode === CommitGraphViewMode.List
+            this.state.commitGraphViewMode === CommitHistoryViewMode.List
           }
           ariaLabel="List view"
           tooltip="List view"
@@ -597,10 +587,10 @@ export class CommitGraphSidebar extends React.Component<
           size="small"
           className={classNames('button-group-item', {
             selected:
-              this.state.commitGraphViewMode === CommitGraphViewMode.Tree,
+              this.state.commitGraphViewMode === CommitHistoryViewMode.Graph,
           })}
           ariaPressed={
-            this.state.commitGraphViewMode === CommitGraphViewMode.Tree
+            this.state.commitGraphViewMode === CommitHistoryViewMode.Graph
           }
           ariaLabel="Graph view"
           tooltip="Graph view"
@@ -1166,8 +1156,8 @@ export class CommitGraphSidebar extends React.Component<
   }
 
   private commitGraph_onListModeClicked = () => {
-    commitGraph_setStoredViewMode('list')
-    this.setState({ commitGraphViewMode: CommitGraphViewMode.List })
+    commitGraph_setStoredViewMode(CommitHistoryViewMode.List)
+    this.setState({ commitGraphViewMode: CommitHistoryViewMode.List })
     void this.props.dispatcher.setCommitSearchQuery(
       this.props.repository,
       this.props.compareState.commitSearchQuery
@@ -1175,15 +1165,15 @@ export class CommitGraphSidebar extends React.Component<
   }
 
   private commitGraph_onTreeModeClicked = () => {
-    commitGraph_setStoredViewMode('tree')
-    this.setState({ commitGraphViewMode: CommitGraphViewMode.Tree }, () =>
+    commitGraph_setStoredViewMode(CommitHistoryViewMode.Graph)
+    this.setState({ commitGraphViewMode: CommitHistoryViewMode.Graph }, () =>
       this.commitGraph_ensureLoaded()
     )
   }
 
   private commitGraph_ensureLoaded() {
     if (
-      this.state.commitGraphViewMode !== CommitGraphViewMode.Tree ||
+      this.state.commitGraphViewMode !== CommitHistoryViewMode.Graph ||
       this.commitGraph_getHiddenBranchRefs() === null
     ) {
       return
@@ -1278,7 +1268,7 @@ export class CommitGraphSidebar extends React.Component<
 
   private onScroll = (start: number, end: number) => {
     const commitGraphIsTreeMode =
-      this.state.commitGraphViewMode === CommitGraphViewMode.Tree
+      this.state.commitGraphViewMode === CommitHistoryViewMode.Graph
     const commits = commitGraphIsTreeMode
       ? this.commitGraph_getFilteredCommitSHAs()
       : this.props.compareState.filteredHistoryCommitSHAs
@@ -1324,7 +1314,7 @@ export class CommitGraphSidebar extends React.Component<
   }
 
   private onCommitSearchQueryChanged = async (text: string) => {
-    if (this.state.commitGraphViewMode === CommitGraphViewMode.Tree) {
+    if (this.state.commitGraphViewMode === CommitHistoryViewMode.Graph) {
       this.props.dispatcher.updateCompareForm(this.props.repository, {
         commitSearchQuery: text,
       })
