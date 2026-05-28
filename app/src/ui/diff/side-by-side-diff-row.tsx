@@ -457,7 +457,6 @@ export class SideBySideDiffRow extends React.Component<
               symbol={narrowNoNewlineSymbol}
               title="No newline at end of file"
               focusable={true}
-              role="presentation"
             />
           )}
         </div>
