@@ -222,6 +222,8 @@ import { AddWorktreeDialog } from './worktrees/add-worktree-dialog'
 import { RenameWorktreeDialog } from './worktrees/rename-worktree-dialog'
 import { DeleteWorktreeDialog } from './worktrees/delete-worktree-dialog'
 import { CantDeleteWorktreeUncommittedChanges } from './worktrees/cant-delete-worktree-uncommitted-changes-dialog'
+import { ManageRemotesDialog } from './manage-remotes/manage-remotes-dialog'
+import { AddRemoteDialog } from './manage-remotes/add-remote-dialog'
 import { getEditorOverrideLabel } from '../models/editor-override'
 import { CantDeleteMainBranch } from './delete-branch/cant-delete-main-branch'
 
@@ -532,6 +534,8 @@ export class App extends React.Component<IAppProps, IAppState> {
         return this.showRebaseDialog()
       case 'show-repository-settings':
         return this.showRepositorySettings()
+      case 'manage-remotes':
+        return this.showManageRemotes()
       case 'view-repository-on-github':
         return this.viewRepositoryOnGitHub()
       case 'compare-on-github':
@@ -1372,6 +1376,18 @@ export class App extends React.Component<IAppProps, IAppState> {
     }
     this.props.dispatcher.showPopup({
       type: PopupType.RepositorySettings,
+      repository,
+    })
+  }
+
+  private showManageRemotes() {
+    const repository = this.getRepository()
+
+    if (!repository || repository instanceof CloningRepository) {
+      return
+    }
+    this.props.dispatcher.showPopup({
+      type: PopupType.ManageRemotes,
       repository,
     })
   }
@@ -2906,6 +2922,26 @@ export class App extends React.Component<IAppProps, IAppState> {
           <CantDeleteWorktreeUncommittedChanges
             key="cant-delete-worktree-uncommitted-changes"
             worktreePath={popup.worktreePath}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      case PopupType.ManageRemotes:
+        return (
+          <ManageRemotesDialog
+            key="manage-remotes"
+            repository={popup.repository}
+            dispatcher={this.props.dispatcher}
+            isTopMost={isTopMost}
+            onDismissed={onPopupDismissedFn}
+          />
+        )
+      case PopupType.AddRemote:
+        return (
+          <AddRemoteDialog
+            key="add-remote"
+            repository={popup.repository}
+            existingRemoteNames={popup.existingRemoteNames}
+            dispatcher={this.props.dispatcher}
             onDismissed={onPopupDismissedFn}
           />
         )

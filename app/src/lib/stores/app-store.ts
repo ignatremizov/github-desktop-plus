@@ -7554,6 +7554,39 @@ export class AppStore extends TypedBaseStore<IAppState> {
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
+  public _getRemotes(repository: Repository): Promise<ReadonlyArray<IRemote>> {
+    return getRemotes(repository)
+  }
+
+  /** This shouldn't be called directly. See `Dispatcher`. */
+  public async _addRemote(
+    repository: Repository,
+    name: string,
+    url: string
+  ): Promise<void> {
+    const gitStore = this.gitStoreCache.get(repository)
+    await gitStore.addRemote(name, url)
+
+    // Fetch the newly added remote so that its branches show up in the branches list
+    const remote = gitStore.remotes.find(r => r.name === name)
+    if (remote !== undefined) {
+      await this._fetchRemote(repository, remote, FetchType.UserInitiatedTask)
+    }
+
+    await this._refreshRepository(repository)
+  }
+
+  /** This shouldn't be called directly. See `Dispatcher`. */
+  public async _removeRemote(
+    repository: Repository,
+    name: string
+  ): Promise<void> {
+    const gitStore = this.gitStoreCache.get(repository)
+    await gitStore.removeRemote(name)
+    await this._refreshRepository(repository)
+  }
+
+  /** This shouldn't be called directly. See `Dispatcher`. */
   public async _openShell(path: string) {
     this.statsStore.increment('openShellCount')
     const { useCustomShell, customShell } = this.getState()

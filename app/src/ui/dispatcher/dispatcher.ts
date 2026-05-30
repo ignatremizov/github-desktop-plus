@@ -73,6 +73,7 @@ import { FetchType } from '../../models/fetch'
 import { GitHubRepository } from '../../models/github-repository'
 import { ManualConflictResolution } from '../../models/manual-conflict-resolution'
 import { Popup, PopupType } from '../../models/popup'
+import { IRemote } from '../../models/remote'
 import {
   PullRequest,
   PullRequestSuggestedNextAction,
@@ -1630,6 +1631,28 @@ export class Dispatcher {
     url: string
   ): Promise<void> {
     return this.appStore._setRemoteURL(repository, name, url)
+  }
+
+  /** Lists the remotes for a repository. */
+  public getRemotes(repository: Repository): Promise<ReadonlyArray<IRemote>> {
+    return this.appStore._getRemotes(repository)
+  }
+
+  /**
+   * Adds a new remote with the given name and URL and fetches it so that its
+   * branches appear in the branches list.
+   */
+  public addRemote(
+    repository: Repository,
+    name: string,
+    url: string
+  ): Promise<void> {
+    return this.appStore._addRemote(repository, name, url)
+  }
+
+  /** Removes the remote that matches the given name. */
+  public removeRemote(repository: Repository, name: string): Promise<void> {
+    return this.appStore._removeRemote(repository, name)
   }
 
   /** Open the URL in a browser */
