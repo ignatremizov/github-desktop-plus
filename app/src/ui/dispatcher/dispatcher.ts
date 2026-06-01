@@ -970,7 +970,7 @@ export class Dispatcher {
   public updateRepositoryAccount(
     repository: Repository,
     account: Account | null
-  ): Promise<void> {
+  ): Promise<Repository> {
     account = account?.isAnonymous ? null : account
     return this.appStore._updateRepositoryAccount(repository, account)
   }
