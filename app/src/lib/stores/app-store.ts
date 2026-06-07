@@ -266,6 +266,7 @@ import {
   unstageAll,
   git,
   IGitStringExecutionOptions,
+  IGitStringResult,
 } from '../git'
 import {
   installGlobalLFSFilters,
@@ -6092,15 +6093,17 @@ export class AppStore extends TypedBaseStore<IAppState> {
     branch: Branch
   ) {
     const isRemote = branch.type === BranchType.Remote
-    if (!isRemote) {
-      return
-    }
 
-    const remoteName = branch.remoteName
-    const remoteBranchName = branch.nameWithoutRemote
+    const remoteName = isRemote ? branch.remoteName : branch.upstreamRemoteName
+    const remoteBranchName = isRemote
+      ? branch.nameWithoutRemote
+      : branch.upstreamWithoutRemote
 
     if (!remoteName) {
       throw new Error('Remote name not found')
+    }
+    if (!remoteBranchName) {
+      throw new Error('Remote branch not found')
     }
 
     const isBackgroundTask = false
@@ -6160,32 +6163,69 @@ export class AppStore extends TypedBaseStore<IAppState> {
       value: 0,
       remote: remote.name,
     })
+    console.log(`[UI] Starting background update for: ${remoteBranchName}...`)
 
-    const fetchFn = async () => {
-      await git(
-        [
-          'fetch',
-          '--progress',
-          '--prune',
-          '--recurse-submodules=on-demand',
-          remoteName,
-          remoteBranchName,
-        ],
+    const fetchFn = async (
+      isRemote: boolean,
+      opts: IGitStringExecutionOptions = {}
+    ): Promise<IGitStringResult> => {
+      const flags = isRemote
+        ? ['fetch', '--progress', '--recurse-submodules=on-demand', remoteName]
+        : [
+            'fetch',
+            '--progress',
+            // '--show-forced-updates',
+            // '--no-write-fetch-head',
+            '--recurse-submodules=on-demand',
+            remoteName,
+          ]
+
+      const branchTarget = isRemote
+        ? remoteBranchName
+        : `${remoteBranchName}:${remoteBranchName}`
+      const actionName = isRemote ? 'fetchRemoteBranch' : 'fetchLocalBranch'
+
+      const executionOpts = isRemote
+        ? opts
+        : {
+            ...opts,
+            successExitCodes: new Set([0, 1]),
+          }
+
+      return await git(
+        [...flags, branchTarget],
         repository.path,
-        'fetchRemoteBranch',
-        opts
+        actionName,
+        executionOpts
       )
-      return true
     }
 
-    const fetchSucceeded = await gitStore.performFailableOperation(fetchFn, {
-      backgroundTask: isBackgroundTask,
-    })
+    try {
+      await gitStore.performFailableOperation(
+        async () => {
+          const result = await fetchFn(isRemote, opts)
+          if (
+            !isRemote &&
+            result &&
+            (result.stderr?.includes('rejected') ||
+              result.stderr?.includes('non-fast-forward'))
+          ) {
+            console.error(
+              `[UI/ERROR] Merge conflict/Divergence detected on ${remoteBranchName}.`
+            )
 
-    if (fetchSucceeded) {
-      await this._refreshRepository(repository)
-    } else {
-      console.error('Fetch did not succeed')
+            this.popupManager.addErrorPopup(new Error(result.stderr))
+          }
+
+          await this._refreshRepository(repository)
+          console.log(`[UI] Success! ${remoteBranchName} updated cleanly.`)
+        },
+        {
+          backgroundTask: isBackgroundTask,
+        }
+      )
+    } finally {
+      console.log(`[UI] Stopping spinner for ${remoteBranchName}.`)
     }
   }
 

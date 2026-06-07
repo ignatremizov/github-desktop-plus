@@ -252,16 +252,16 @@ export class BranchList extends React.Component<IBranchListProps> {
       return
     }
 
-    const { type, name, nameWithoutRemote, remoteName } = item.branch
+    const { type, name, nameWithoutRemote } = item.branch
     const isLocal = type === BranchType.Local
     const isInUseByOtherWorktree = !!this.inUseByOtherWorktreeName(item)
     const isDefault = nameWithoutRemote === this.props.repository.defaultBranch
     const items = generateBranchContextMenuItems({
       name,
-      remoteName,
       nameWithoutRemote,
       isLocal,
       isDefault,
+      isCurrentBranch: item.branch.name === this.props.currentBranch?.name,
       repoType: this.props.repository.gitHubRepository?.type,
       isInUseByOtherWorktree,
       onRenameBranch,

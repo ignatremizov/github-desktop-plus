@@ -5,9 +5,10 @@ import { assertNever } from '../../lib/fatal-error'
 
 interface IBranchContextMenuConfig {
   name: string
-  remoteName?: string | null
   nameWithoutRemote: string
+  isDefault: boolean
   isLocal: boolean
+  isCurrentBranch: boolean
   repoType: RepoType | undefined
   isInUseByOtherWorktree: boolean
   onRenameBranch?: (branchName: string) => void
@@ -24,8 +25,9 @@ export function generateBranchContextMenuItems(
   const {
     name,
     nameWithoutRemote,
-    remoteName,
     isLocal,
+    isDefault,
+    isCurrentBranch,
     repoType,
     isInUseByOtherWorktree,
     onRenameBranch,
@@ -36,20 +38,11 @@ export function generateBranchContextMenuItems(
     onFetchRemoteBranch,
   } = config
   const items = new Array<IMenuItem>()
-
   if (onRenameBranch !== undefined) {
     items.push({
       label: 'Rename…',
       action: () => onRenameBranch(name),
       enabled: isLocal,
-    })
-  }
-
-  if (!isLocal && onFetchRemoteBranch !== undefined) {
-    items.push({
-      label: getRemoteFetchBranchLabel(),
-      action: () => onFetchRemoteBranch(name),
-      enabled: !!remoteName,
     })
   }
 
@@ -76,6 +69,16 @@ export function generateBranchContextMenuItems(
     items.push({
       label: __DARWIN__ ? 'Set as Default Branch' : 'Set as default branch',
       action: () => onSetAsDefaultBranch(nameWithoutRemote),
+    })
+  }
+
+  // This should be the selected branch.
+  if (!isDefault && !isCurrentBranch && onFetchRemoteBranch !== undefined) {
+    items.push({ type: 'separator' })
+    items.push({
+      label: getRemoteFetchBranchLabel(),
+      action: () => onFetchRemoteBranch(name),
+      enabled: true,
     })
   }
 
@@ -118,5 +121,5 @@ function getViewPullRequestLabel(repoType: RepoType): string {
 }
 
 function getRemoteFetchBranchLabel(): string {
-  return `Fetch branch`
+  return __DARWIN__ ? 'Fetch Branch' : 'Fetch branch'
 }
