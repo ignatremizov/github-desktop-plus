@@ -260,6 +260,9 @@ Simply install GitHub Desktop Plus from [Flathub](https://flathub.org/en/apps/io
 flatpak install flathub io.github.pol_rivero.github-desktop-plus
 ```
 
+> **NOTE:** Git hooks will run inside the Flatpak sandbox and cannot access programs installed on your system (such as version managers,
+> linters, or other tools your hooks rely on). If your hooks depend on such programs, install a native package instead.
+
 ---
 
 </details>
