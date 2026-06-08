@@ -27,8 +27,10 @@ export class FetchProgressParser extends GitProgressParser {
  * of the individual progress reporting steps in a fetch operation
  */
 const singleBranchFetchSteps = [
-  { title: 'remote: Counting objects', weight: 0.4 },
-  { title: 'remote: Compressing objects', weight: 0.6 },
+  { title: 'remote: Enumerating objects', weight: 0.1 },
+  { title: 'remote: Counting objects', weight: 0.2 },
+  { title: 'remote: Compressing objects', weight: 0.3 },
+  { title: 'remote', weight: 0.4 },
 ]
 
 /**
