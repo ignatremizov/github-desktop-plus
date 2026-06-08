@@ -20,3 +20,24 @@ export class FetchProgressParser extends GitProgressParser {
     super(steps)
   }
 }
+
+/**
+ * Progress steps for a single-branch fetch operation. Unlike a full fetch,
+ * Highly approximate (some would say outright inaccurate) division
+ * of the individual progress reporting steps in a fetch operation
+ */
+const remoteOrLocalBranchFetchSteps = [
+  { title: 'remote: Counting objects', weight: 0.4 },
+  { title: 'remote: Compressing objects', weight: 0.6 },
+]
+
+/**
+ * A utility class for interpreting the output from
+ * `git fetch --progress <remote> <branch>` and turning that into a percentage
+ * value estimating the overall progress of a single branch fetch.
+ */
+export class RemoteOrLocalBranchFetchProgressParser extends GitProgressParser {
+  public constructor() {
+    super(remoteOrLocalBranchFetchSteps)
+  }
+}

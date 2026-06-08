@@ -452,7 +452,10 @@ import {
   gatherCommitContext,
 } from '../copilot-conflict-context'
 import { resolveWithin } from '../path'
-import { executionOptionsWithProgress, FetchProgressParser } from '../progress'
+import {
+  executionOptionsWithProgress,
+  RemoteOrLocalBranchFetchProgressParser,
+} from '../progress'
 import { envForRemoteOperation } from '../git/environment'
 
 const LastSelectedRepositoryIDKey = 'last-selected-repository-id'
@@ -6033,12 +6036,13 @@ export class AppStore extends TypedBaseStore<IAppState> {
 
   private async withPushPullFetch(
     repository: Repository,
-    fn: () => Promise<void>
+    fn: () => Promise<void>,
+    onRequestAlreadyInProgress?: () => void
   ): Promise<void> {
     const state = this.repositoryStateCache.get(repository)
     // Don't allow concurrent network operations.
     if (state.isPushPullFetchInProgress) {
-      return
+      return onRequestAlreadyInProgress?.()
     }
 
     this.repositoryStateCache.update(repository, () => ({
@@ -6047,8 +6051,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.emitUpdate()
 
     try {
+      console.log('isPushPullFetchInProgress true')
       await fn()
     } finally {
+      console.log('isPushPullFetchInProgress false')
       this.repositoryStateCache.update(repository, () => ({
         isPushPullFetchInProgress: false,
       }))
@@ -6115,60 +6121,54 @@ export class AppStore extends TypedBaseStore<IAppState> {
     const progressCb = (progress: IFetchProgress) => {
       this.updatePushPullFetchProgress(repository, progress)
     }
-
     const progressTitle = isRemote
       ? `Fetching ${branch.name}`
       : `Fetching ${remoteBranchName}`
     const kind = 'fetch'
-    let opts: IGitStringExecutionOptions = {
-      successExitCodes: new Set([0]),
-    }
-    if (remote.url) {
-      opts = {
-        ...opts,
-        env: await envForRemoteOperation(remote.url),
-      }
-    }
 
-    opts = await executionOptionsWithProgress(
-      { ...opts, trackLFSProgress: true, isBackgroundTask },
-      new FetchProgressParser(),
-      progress => {
-        console.log(progress, ' progress_log ')
-        // In addition to progress output from the remote end and from
-        // git itself, the stderr output from pull contains information
-        // about ref updates. We don't need to bring those into the progress
-        // stream so we'll just punt on anything we don't know about for now.
-        if (progress.kind === 'context') {
-          if (!progress.text.startsWith('remote: Counting objects')) {
-            return
-          }
+    const fetchFn = async (isRemote: boolean): Promise<IGitStringResult> => {
+      let opts: IGitStringExecutionOptions = {
+        successExitCodes: new Set([0]),
+      }
+      if (remote.url) {
+        opts = {
+          ...opts,
+          env: await envForRemoteOperation(remote.url),
         }
-
-        const description =
-          progress.kind === 'progress' ? progress.details.text : progress.text
-        const value = progress.percent
-
-        progressCb({
-          kind,
-          title: progressTitle,
-          description,
-          value,
-          remote: remote.name,
-        })
       }
-    )
+      opts = await executionOptionsWithProgress(
+        { ...opts, trackLFSProgress: true, isBackgroundTask },
+        new RemoteOrLocalBranchFetchProgressParser(),
+        progress => {
+          if (progress.kind === 'context') {
+            const text = progress.text
+            if (
+              !text.startsWith('remote: Counting objects') &&
+              !text.startsWith('remote: Compressing objects')
+            ) {
+              return
+            }
+          }
 
-    const fetchFn = async (
-      isRemote: boolean,
-      opts: IGitStringExecutionOptions = {}
-    ): Promise<IGitStringResult> => {
+          const description =
+            progress.kind === 'progress' ? progress.details.text : progress.text
+          const value = progress.percent
+
+          progressCb({
+            kind,
+            title: progressTitle,
+            description,
+            value,
+            remote: remote.name,
+          })
+        }
+      )
       const flags = isRemote
         ? ['fetch', '--progress', '--recurse-submodules=on-demand', remoteName]
         : [
             'fetch',
             '--progress',
-            // '--show-forced-updates',
+            '--show-forced-updates',
             // '--no-write-fetch-head',
             '--recurse-submodules=on-demand',
             remoteName,
@@ -6202,37 +6202,45 @@ export class AppStore extends TypedBaseStore<IAppState> {
         value: 0,
         remote: remote.name,
       })
-      await gitStore.performFailableOperation(
-        async () => {
-          const result = await fetchFn(isRemote, opts)
-          if (
-            !isRemote &&
-            result &&
-            (result.stderr?.includes('rejected') ||
-              result.stderr?.includes('non-fast-forward'))
-          ) {
-            this.emitError(
-              new ErrorWithMetadata(new Error(result.stderr), { repository })
-            )
-          }
+      try {
+        await gitStore.performFailableOperation(
+          async () => {
+            const result = await fetchFn(isRemote)
+            if (
+              !isRemote &&
+              result &&
+              (result.stderr?.includes('rejected') ||
+                result.stderr?.includes('non-fast-forward'))
+            ) {
+              this.emitError(
+                new ErrorWithMetadata(new Error(result.stderr), { repository })
+              )
+            }
 
-          await this._refreshRepository(repository)
-        },
-        {
-          backgroundTask: isBackgroundTask,
-        }
-      )
+            await this._refreshRepository(repository)
+          },
+          {
+            backgroundTask: isBackgroundTask,
+          }
+        )
+      } finally {
+        this.updatePushPullFetchProgress(repository, null)
+      }
     }
 
     try {
-      await this.withPushPullFetch(repository, execFetchFn)
+      await this.withPushPullFetch(repository, execFetchFn, () => {
+        this.popupManager.addErrorPopup(
+          new Error(
+            'Another push/pull/fetch request is in progress.\nTry again after the ongoing request is finished'
+          )
+        )
+      })
     } catch (error) {
       const errorWithMetadata = new ErrorWithMetadata(error, {
         repository,
       })
       this.emitError(errorWithMetadata)
-    } finally {
-      this.updatePushPullFetchProgress(repository, null)
     }
   }
 
