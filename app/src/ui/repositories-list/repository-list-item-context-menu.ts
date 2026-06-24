@@ -16,6 +16,7 @@ import {
   DefaultEditorLabel,
   DefaultShellLabel,
 } from '../lib/context-menu'
+import { normalizePath } from '../../lib/helpers/path'
 
 interface IRepositoryListItemContextMenuConfig {
   repository: Repositoryish
@@ -47,6 +48,52 @@ interface IRepositoryListItemContextMenuConfig {
   worktreePath?: string
 }
 
+interface ISyntheticWorktreeRootContextMenuConfig {
+  readonly name: string
+  readonly path: string
+  readonly sourceRepository: Repository | null
+  readonly isPinned: boolean
+  readonly onCopyRepoPath: (path: string) => void
+  readonly onPinRepository?: (repository: Repository) => void
+  readonly onUnpinRepository?: (repository: Repository) => void
+}
+
+export const generateSyntheticWorktreeRootContextMenu = (
+  config: ISyntheticWorktreeRootContextMenuConfig
+): ReadonlyArray<IMenuItem> => {
+  const pinAction = config.isPinned
+    ? config.onUnpinRepository
+    : config.onPinRepository
+  const pinItems: ReadonlyArray<IMenuItem> =
+    config.sourceRepository === null || pinAction === undefined
+      ? []
+      : [
+          {
+            label: config.isPinned
+              ? __DARWIN__
+                ? 'Unpin Repository'
+                : 'Unpin repository'
+              : __DARWIN__
+              ? 'Pin Repository'
+              : 'Pin repository',
+            action: () => pinAction(config.sourceRepository!),
+          },
+        ]
+
+  return [
+    ...pinItems,
+    ...(pinItems.length > 0 ? [{ type: 'separator' as const }] : []),
+    {
+      label: __DARWIN__ ? 'Copy Repo Name' : 'Copy repo name',
+      action: () => clipboard.writeText(config.name),
+    },
+    {
+      label: __DARWIN__ ? 'Copy Repo Path' : 'Copy repo path',
+      action: () => config.onCopyRepoPath(config.path),
+    },
+  ]
+}
+
 export const generateRepositoryListContextMenu = (
   config: IRepositoryListItemContextMenuConfig
 ) => {
@@ -65,6 +112,13 @@ export const generateRepositoryListContextMenu = (
   const openInShell = config.shellLabel
     ? `Open in ${config.shellLabel}`
     : DefaultShellLabel
+  const rowPath = config.worktreePath ?? repository.path
+  const rowPathIsRepositoryPath =
+    config.worktreePath === undefined ||
+    normalizePath(config.worktreePath) === normalizePath(repository.path)
+  const rowName = !rowPathIsRepositoryPath
+    ? Path.basename(rowPath)
+    : repository.name
 
   const items: ReadonlyArray<IMenuItem> = [
     ...buildAliasMenuItems(config),
@@ -73,11 +127,11 @@ export const generateRepositoryListContextMenu = (
     { type: 'separator' },
     {
       label: __DARWIN__ ? 'Copy Repo Name' : 'Copy repo name',
-      action: () => clipboard.writeText(repository.name),
+      action: () => clipboard.writeText(rowName),
     },
     {
       label: __DARWIN__ ? 'Copy Repo Path' : 'Copy repo path',
-      action: () => config.onCopyRepoPath(repository.path),
+      action: () => config.onCopyRepoPath(rowPath),
     },
     { type: 'separator' },
     {
@@ -132,6 +186,7 @@ interface IWorktreeListItemContextMenuConfig {
   onCreateWorktree: (repository: Repository) => void
   onRenameWorktree: (repository: Repository, worktreePath: string) => void
   onDeleteWorktree: (repository: Repository, worktreePath: string) => void
+  onPruneStaleWorktrees?: () => void
   onViewOnGitHub: (repository: Repositoryish) => void
   onOpenWorktreeInNewWindow: (worktreePath: string) => void
   onOpenInShell: (repository: Repositoryish, path?: string) => void
@@ -148,7 +203,9 @@ export const generateWorktreeListItemContextMenu = (
   const name = Path.basename(path)
   const isGitHub = isRepositoryWithGitHubRepository(repository)
   const hasOriginUrl = hasDefaultRemoteUrl(repository)
-  const canModify = !worktree.isLocked
+  const canUseWorktreePath = !worktree.isPrunable
+  const canModify = !worktree.isLocked && canUseWorktreePath
+  const canDelete = canModify
   const openInExternalEditor = config.externalEditorLabel
     ? `Open in ${config.externalEditorLabel}`
     : DefaultEditorLabel
@@ -160,6 +217,7 @@ export const generateWorktreeListItemContextMenu = (
     {
       label: __DARWIN__ ? 'New Worktree…' : 'New worktree…',
       action: () => config.onCreateWorktree(repository),
+      enabled: canUseWorktreePath,
     },
     {
       label: __DARWIN__ ? 'Rename Worktree…' : 'Rename worktree…',
@@ -188,24 +246,39 @@ export const generateWorktreeListItemContextMenu = (
         ? 'Open Worktree in New Window'
         : 'Open worktree in new window',
       action: () => config.onOpenWorktreeInNewWindow(path),
+      enabled: canUseWorktreePath,
     },
     {
       label: openInShell,
       action: () => config.onOpenInShell(repository, path),
+      enabled: canUseWorktreePath,
     },
     {
       label: RevealInFileManagerLabel,
       action: () => config.onShowRepository(repository, path),
+      enabled: canUseWorktreePath,
     },
     {
       label: openInExternalEditor,
       action: () => config.onOpenInExternalEditor(repository, path),
+      enabled: canUseWorktreePath,
     },
+    ...(worktree.isPrunable && config.onPruneStaleWorktrees !== undefined
+      ? [
+          { type: 'separator' as const },
+          {
+            label: __DARWIN__
+              ? 'Prune Stale Worktrees'
+              : 'Prune stale worktrees',
+            action: config.onPruneStaleWorktrees,
+          },
+        ]
+      : []),
     { type: 'separator' },
     {
       label: __DARWIN__ ? 'Delete Worktree…' : 'Delete worktree…',
       action: () => config.onDeleteWorktree(repository, path),
-      enabled: canModify,
+      enabled: canDelete,
     },
   ]
 }
