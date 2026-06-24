@@ -1414,6 +1414,7 @@ export class SectionList extends React.Component<
             overflowX: 'hidden',
             overflowY: 'hidden',
           }}
+          containerStyle={{ overflow: 'hidden' }}
           tabIndex={-1}
           aria-label={this.props.getSectionAriaLabel?.(section)}
         />
