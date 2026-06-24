@@ -70,7 +70,7 @@ import { IAPIRepoRuleset } from './api'
 import { ICustomIntegration } from './custom-integration'
 import { Emoji } from './emoji'
 import { IUpdateState } from '../ui/lib/update-store'
-import type { Model } from '@github/copilot-sdk/dist/generated/rpc'
+import type { CopilotModel as Model } from './copilot/model'
 
 export enum SelectionType {
   Repository,

@@ -87,7 +87,7 @@ import {
   setNumberFormatPreference,
 } from '../../models/formatting-preferences'
 import { enableFormattingPreferences } from '../../lib/feature-flag'
-import type { Model } from '@github/copilot-sdk/dist/generated/rpc'
+import type { CopilotModel as Model } from '../../lib/copilot/model'
 
 interface IPreferencesProps {
   readonly dispatcher: Dispatcher
