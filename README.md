@@ -1,4 +1,4 @@
-# GH Desktop Plus
+# GitHub Desktop Plus
 
 This is an **up-to-date** fork of [GitHub Desktop](https://desktop.github.com) with additional features and improvements.
 
@@ -16,7 +16,7 @@ This is an **up-to-date** fork of [GitHub Desktop](https://desktop.github.com) w
 
 [^1]: Rich integration with GitHub, GitHub Enterprise, Bitbucket Cloud, GitLab Cloud, self-hosted GitLab, Codeberg Cloud, self-hosted Forgejo, Gitea Cloud, and self-hosted Gitea. Multi-account support is available for all of them (e.g., sign in to multiple GitHub accounts at the same time).
 
-## Additional Features in Desktop Plus ✨
+## Additional Features in GitHub Desktop Plus ✨
 
 **See the [full list of features here](https://desktop-plus.org/#feature-list).**
 
@@ -68,15 +68,15 @@ For this reason, **I recommend using Winget instead of the manual download**.
 #### Option 1: Using Homebrew (Recommended)
 
 ```bash
-brew install desktop-plus/tap/desktop-plus
+brew install pol-rivero/tap/github-desktop-plus
 ```
 
-Make sure to run `brew update` + `brew upgrade` regularly to get the latest updates for Desktop Plus.
+Make sure to run `brew update` regularly to get the latest updates for GitHub Desktop Plus.
 
 #### Option 2: Manual download (Not recommended)
 
 Download and extract the ZIP file from the [releases page](https://github.com/desktop-plus/desktop-plus/releases/latest). Click the app file to run it.  
-If you encounter the error "Apple could not verify this app is free of malware", go to "System Settings" > "Privacy & Security", scroll down to "Security" and click "Open Anyway" on "Desktop Plus".
+If you encounter the error "Apple could not verify this app is free of malware", go to "System Settings" > "Privacy & Security", scroll down to "Security" and click "Open Anyway" on "GitHub Desktop Plus".
 
 | **64-bit x86** | **64-bit ARM (Apple Silicon)** |
 | --- | --- |
@@ -125,7 +125,7 @@ Create the repository file:
 
 ```bash
 sudo rpm --import https://gpg.desktop-plus.org/public.key
-echo -e "[desktop-plus]\nname=Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/yum.repos.d/desktop-plus.repo
+echo -e "[desktop-plus]\nname=GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/yum.repos.d/desktop-plus.repo
 ```
 
 Update the package list and install:
@@ -159,7 +159,7 @@ Create the repository file:
 
 ```bash
 sudo rpm --import https://gpg.desktop-plus.org/public.key
-echo -e "[desktop-plus]\nname=Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/zypp/repos.d/desktop-plus.repo
+echo -e "[desktop-plus]\nname=GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/zypp/repos.d/desktop-plus.repo
 ```
 
 Update the package list and install:
@@ -195,37 +195,18 @@ You can also build from source by installing `desktop-plus` or `desktop-plus-git
 </details>
 
 
-### Flatpak (any distro)
-
-<details>
-<summary>Click to expand</summary>
-<br>
-
-Simply install Desktop Plus from [Flathub](https://flathub.org/en/apps/org.desktop_plus.desktop-plus):
-
-```bash
-flatpak install flathub org.desktop_plus.desktop-plus
-```
-
-> **NOTE:** Git hooks will run inside the Flatpak sandbox and cannot access programs installed on your system (such as version managers,
-> linters, or other tools your hooks rely on). If your hooks depend on such programs, install a native package instead.
-
----
-
-</details>
-
 ### AppImage (any distro, not recommended)
 
 <details>
 <summary>Click to expand</summary>
 <br>
 
-**IMPORTANT:** I strongly recommend using your distribution's native package (APT, RPM, and AUR packages above) or Flatpak instead of the AppImage, as it requires some manual setup for the sign-in feature to work.  
+**IMPORTANT:** I strongly recommend using your distribution's native package (APT, RPM, and AUR packages above) instead of the AppImage, as it requires some manual setup for the sign-in feature to work.
 If you need to use the AppImage, follow these steps:
-1. Manually [create a `desktop-plus.desktop` entry](https://wiki.archlinux.org/title/Desktop_entries).
+1. Manually [create a `github-desktop-plus.desktop` entry](https://wiki.archlinux.org/title/Desktop_entries).
 2. Link the MIME type:
    ```sh
-   xdg-mime default desktop-plus.desktop x-scheme-handler/x-github-desktop-auth
+   xdg-mime default github-desktop-plus.desktop x-scheme-handler/x-github-desktop-auth
    ```
 
 #### Option 1: Using ["AM"/"AppMan"](https://github.com/ivan-hc/AM)
@@ -250,7 +231,7 @@ Download the AppImage from the [releases page](https://github.com/desktop-plus/d
 Then, make it executable:
 
 ```bash
-chmod +x DesktopPlus-*-linux-*.AppImage
+chmod +x GitHubDesktopPlus-*-linux-*.AppImage
 ```
 
 Finally, double-click the .AppImage file to run it.
@@ -265,7 +246,7 @@ Before opening a new issue, please check the [Known Issues](docs/known-issues.md
 
 ## Command Line Interface 💻
 
-Desktop Plus includes a CLI (`desktop-plus-cli`) for opening and cloning repositories from the terminal. See the [CLI documentation](docs/cli.md) for usage details and instructions on creating a shorter alias.
+GitHub Desktop Plus includes a CLI (`github-desktop-plus-cli`) for opening and cloning repositories from the terminal. See the [CLI documentation](docs/cli.md) for usage details and instructions on creating a shorter alias.
 
 ## Running the app locally 🏗️
 
@@ -318,5 +299,3 @@ This fork also focuses on integrating nicely with Bitbucket, since I use it for 
 Keep in mind that this version is not endorsed by GitHub, and it's aimed at power users with technical knowledge. If you're looking for a polished and stable product, I recommend using the official GitHub Desktop app instead.
 
 ## Acknowledgments 🙏
-
-Application icon adapted from [`git-branch-plus`](https://lucide.dev/icons/git-branch-plus) by [Lucide](https://lucide.dev), [ISC license](https://github.com/lucide-icons/lucide/blob/main/LICENSE).

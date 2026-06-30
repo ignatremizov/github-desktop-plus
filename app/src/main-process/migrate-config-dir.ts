@@ -4,8 +4,8 @@ import { app } from 'electron'
 import * as Fs from 'fs'
 import * as Path from 'path'
 
-/** Base names of previous app versions to migrate from, in priority order. */
-const LegacyAppNames = ['GitHub Desktop Plus', 'GitHub Desktop']
+/** Base names from temporary renamed builds to migrate back into this fork. */
+const LegacyAppNames = ['Desktop Plus']
 
 const MigrationSentinel = '.config-migrated'
 

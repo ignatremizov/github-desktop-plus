@@ -65,15 +65,15 @@ const options: RedhatOptions = {
   dest: distRoot,
   arch: getArchitecture(),
   version: getVersion(),
-  name: 'desktop-plus',
+  name: 'github-desktop-plus',
   description:
     'GitHub Desktop fork with advanced functionality and improvements.',
-  productName: 'Desktop Plus',
+  productName: 'GitHub Desktop Plus',
   productDescription:
     'GitHub Desktop fork with advanced functionality and improvements.',
   genericName: 'Git Client',
   categories: ['Development', 'GitHub'],
-  homepage: 'https://desktop-plus.org',
+  homepage: 'https://github.com/ignatremizov/github-desktop-plus',
   requires: [
     // dugite-native dependencies
     '(libcurl or libcurl4)',
@@ -121,17 +121,6 @@ export async function packageRedhat(): Promise<string> {
     await originalCreateSpec.call(this)
     let specContent: string = await readFile(this.specPath, 'utf8')
 
-    // The RPM package was renamed from "github-desktop-plus" to "desktop-plus".
-    // Declaring Obsoletes/Provides for the old name makes `dnf upgrade` migrate
-    // existing users by replacing the old package with this one.
-    const renameDirectives =
-      'Provides: github-desktop-plus = %{version}-%{release}\n' +
-      'Obsoletes: github-desktop-plus < %{version}-%{release}'
-    specContent = specContent.replace(
-      /^Requires:.*$/m,
-      match => `${match}\n${renameDirectives}`
-    )
-
     // overrideHicolorIconName installs the icons under LINUX_ICON_NAME, but the
     // spec's %files section lists them by package name. Rewrite those entries
     // (and only those — not the bin/lib/.desktop paths) so the manifest matches
@@ -162,7 +151,7 @@ export async function packageRedhat(): Promise<string> {
     Installer.prototype.createSpec = originalCreateSpec
     restoreIconName()
   }
-  const installersPath = `${distRoot}/desktop-plus*.rpm`
+  const installersPath = `${distRoot}/github-desktop-plus*.rpm`
 
   const files = await globPromise(installersPath)
 
@@ -174,7 +163,7 @@ export async function packageRedhat(): Promise<string> {
 
   const oldPath = files[0]
 
-  const newFileName = `DesktopPlus-v${getVersion()}-linux-${getArchitectureForFileName()}.rpm`
+  const newFileName = `GitHubDesktopPlus-v${getVersion()}-linux-${getArchitectureForFileName()}.rpm`
   const newPath = join(distRoot, newFileName)
   await rename(oldPath, newPath)
 

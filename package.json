@@ -1,9 +1,9 @@
 {
   "repository": {
     "type": "git",
-    "url": "https://github.com/pol-rivero/desktop-plus.git"
+    "url": "https://github.com/ignatremizov/github-desktop-plus.git"
   },
-  "description": "Desktop Plus build dependencies",
+  "description": "GitHub Desktop Plus build dependencies",
   "scripts": {
     "cli": "ts-node app/src/cli/main.ts",
     "check:eslint": "tsc -P eslint-rules/",
@@ -51,9 +51,9 @@
     "validate-changelog": "ts-node -P script/tsconfig.json script/validate-changelog.ts"
   },
   "author": {
-    "name": "Pol Rivero",
-    "email": "admin@desktop-plus.org",
-    "url": "https://desktop-plus.org/"
+    "name": "Ignat Remizov",
+    "email": "ignat@ignatremizov.com",
+    "url": "https://github.com/ignatremizov/github-desktop-plus"
   },
   "license": "MIT",
   "engines": {

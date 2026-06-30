@@ -35,7 +35,7 @@ export function getVersion(): string {
  * Get the name of the app.
  */
 export function getName(): string {
-  return __APP_NAME__
+  return __DEV__ ? `${__APP_NAME__}-dev` : __APP_NAME__
 }
 
 /**

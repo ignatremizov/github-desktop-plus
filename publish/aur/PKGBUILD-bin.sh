@@ -1,15 +1,15 @@
-# Maintainer: Pol Rivero < aur AT polrivero DOT com >
+# Maintainer: Ignat Remizov < ignat AT ignatremizov DOT com >
 # Contributor: Padraic Fanning < fanninpm AT miamioh DOT edu >
 # Contributor: Jake <aur@ja-ke.tech>
 # Contributor: Ian MacKay <immackay0@gmail.com>
 
-_pkgname='desktop-plus'
+_pkgname='github-desktop-plus'
 pkgname="${_pkgname}-bin"
 pkgver=[[APP_VERSION]]
 pkgrel=1
 pkgdesc="GitHub Desktop fork with extra features and improvements (binary release)."
 arch=('x86_64' 'aarch64')
-url="https://github.com/desktop-plus/desktop-plus"
+url="https://github.com/ignatremizov/github-desktop-plus"
 license=('MIT')
 provides=(${_pkgname})
 conflicts=(${_pkgname})
@@ -30,7 +30,7 @@ source=(
     'launch-app.sh'
 )
 
-_common_download_url="${url}/releases/download/v${pkgver}/DesktopPlus-v${pkgver}-linux"
+_common_download_url="${url}/releases/download/v${pkgver}/GitHubDesktopPlus-v${pkgver}-linux"
 source_x86_64=(${_common_download_url}-x86_64.deb)
 source_aarch64=(${_common_download_url}-arm64.deb)
 
@@ -46,15 +46,15 @@ package() {
     tar --zstd -xf data.tar.zst -C "$pkgdir"
     install -d "$INSTALL_DIR"
 
-    mv "$pkgdir/usr/lib/desktop-plus/"* "$INSTALL_DIR/"
-    rmdir "$pkgdir/usr/lib/desktop-plus"
+    mv "$pkgdir/usr/lib/github-desktop-plus/"* "$INSTALL_DIR/"
+    rmdir "$pkgdir/usr/lib/github-desktop-plus"
     rmdir "$pkgdir/usr/lib"
 
-    rm "$pkgdir/usr/share/applications/desktop-plus.desktop"
+    rm "$pkgdir/usr/share/applications/github-desktop-plus.desktop"
     install -Dm644 "${_pkgname}.desktop" "$pkgdir/usr/share/applications/${_pkgname}.desktop"
 
     install -Dm755 "$srcdir/launch-app.sh" "$pkgdir/usr/bin/${_pkgname}"
 
-    chmod +x "$INSTALL_DIR/resources/app/static/desktop-plus-cli"
-    ln -s "/opt/${_pkgname}/resources/app/static/desktop-plus-cli" "$pkgdir/usr/bin/desktop-plus-cli"
+    chmod +x "$INSTALL_DIR/resources/app/static/github"
+    ln -s "/opt/${_pkgname}/resources/app/static/github" "$pkgdir/usr/bin/github-desktop-plus-cli"
 }

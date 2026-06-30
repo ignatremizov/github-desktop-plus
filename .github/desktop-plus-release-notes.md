@@ -1,4 +1,4 @@
-Desktop Plus v3.6.4-alpha4
+GitHub Desktop Plus v3.6.4-alpha4
 
 ## **Changes and improvements:**
 
@@ -33,4 +33,3 @@ Desktop Plus v3.6.4-alpha4
   ```
 
 - Self-hosted Bitbucket Server instances are not supported at the moment. Their API is not compatible with Bitbucket Cloud, so implementating support would be an entire new feature, which is outside the scope of this release. If you want this feature, please open an issue to show your interest.
-

@@ -16,10 +16,10 @@ export function findToastActivatorClsid() {
       'Windows',
       'Start Menu',
       'Programs',
-      'Desktop Plus',
-      'Desktop Plus.lnk'
+      'GitHub Desktop Plus',
+      'GitHub Desktop Plus.lnk'
     ),
-    path.join(os.homedir(), 'Desktop', 'Desktop Plus.lnk'),
+    path.join(os.homedir(), 'Desktop', 'GitHub Desktop Plus.lnk'),
   ]
 
   for (const shortcutPath of shortcutPaths) {

@@ -1,13 +1,10 @@
 import { promisify } from 'util'
 import { join } from 'path'
-import { execFileSync } from 'child_process'
-import { tmpdir } from 'os'
-import { mkdtemp } from 'fs/promises'
 
 import glob = require('glob')
 const globPromise = promisify(glob)
 
-import { ensureDir, rename, writeFile } from 'fs-extra'
+import { rename } from 'fs-extra'
 
 import { getVersion } from '../app/package-info'
 import {
@@ -75,17 +72,17 @@ const options: DebianOptions = {
   dest: distRoot,
   arch: getArchitecture(),
   version: getVersion(),
-  name: 'desktop-plus',
+  name: 'github-desktop-plus',
   description:
     'GitHub Desktop fork with advanced functionality and improvements.',
-  productName: 'Desktop Plus',
+  productName: 'GitHub Desktop Plus',
   productDescription:
     'GitHub Desktop fork with advanced functionality and improvements.',
   genericName: 'Git Client',
   categories: ['Development', 'GitHub'],
   section: 'GNOME;GTK;Development',
   priority: 'extra',
-  homepage: 'https://desktop-plus.org',
+  homepage: 'https://github.com/ignatremizov/github-desktop-plus',
   depends: [
     // dugite-native dependencies
     'libcurl3 | libcurl4',
@@ -115,7 +112,7 @@ const options: DebianOptions = {
     // see https://github.com/shiftkey/desktop/issues/72 for more details
     'x-scheme-handler/x-github-desktop-dev-auth',
   ],
-  maintainer: 'Pol Rivero <admin@desktop-plus.org>',
+  maintainer: 'Ignat Remizov <ignat@ignatremizov.com>',
   desktopTemplate: 'script/resources/deb/desktop.ejs',
 }
 
@@ -132,7 +129,7 @@ export async function packageDebian(): Promise<string> {
   } finally {
     restoreIconName()
   }
-  const installersPath = `${distRoot}/desktop-plus*.deb`
+  const installersPath = `${distRoot}/github-desktop-plus*.deb`
 
   const files = await globPromise(installersPath)
 
@@ -144,55 +141,9 @@ export async function packageDebian(): Promise<string> {
 
   const oldPath = files[0]
 
-  const newFileName = `DesktopPlus-v${getVersion()}-linux-${getArchitectureForFileName()}.deb`
+  const newFileName = `GitHubDesktopPlus-v${getVersion()}-linux-${getArchitectureForFileName()}.deb`
   const newPath = join(distRoot, newFileName)
   await rename(oldPath, newPath)
 
   return Promise.resolve(newPath)
-}
-
-export async function packageTransitionalDebian(): Promise<string> {
-  if (process.platform === 'win32') {
-    return Promise.reject('Windows is not supported')
-  }
-
-  const arch = getArchitecture()
-  const version = getVersion()
-
-  const stagingDir = await mkdtemp(
-    join(tmpdir(), 'github-desktop-plus-transitional-')
-  )
-  const debianDir = join(stagingDir, 'DEBIAN')
-  await ensureDir(debianDir)
-
-  const control =
-    [
-      `Package: github-desktop-plus`,
-      `Version: ${version}`,
-      `Architecture: ${arch}`,
-      `Maintainer: ${options.maintainer}`,
-      `Depends: ${options.name}`,
-      `Section: devel`,
-      `Priority: optional`,
-      `Homepage: ${options.homepage}`,
-      `Description: Transitional package for Desktop Plus`,
-      ` GitHub Desktop Plus has been renamed to Desktop Plus. This dummy package`,
-      ` depends on the new "${options.name}" package and can be safely removed`,
-      ` once the migration is complete.`,
-    ].join('\n') + '\n'
-
-  await writeFile(join(debianDir, 'control'), control)
-
-  // Use the canonical Debian filename (name_version_arch.deb). Besides being
-  // what dpkg-name produces, the "_arch" suffix (vs. the real package's
-  // "-x86_64"/"-arm64") keeps this out of the release_aur job's
-  // "*-x86_64.deb"/"*-arm64.deb" globs, which expect a single match.
-  const newFileName = `github-desktop-plus_${version}_${arch}.deb`
-  const newPath = join(distRoot, newFileName)
-
-  execFileSync('fakeroot', ['dpkg-deb', '--build', stagingDir, newPath], {
-    stdio: 'inherit',
-  })
-
-  return newPath
 }
