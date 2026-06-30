@@ -3,6 +3,7 @@
   "name": "github-desktop-plus",
   "desktopName": "github-desktop-plus",
   "productName": "GitHub Desktop Plus",
+  "displayName": "Ignat's GitHub Desktop Plus",
   "bundleID": "com.ignatremizov.GitHubDesktopPlus",
   "companyName": "Ignat Remizov",
   "version": "3.6.4-beta2",

@@ -40,7 +40,7 @@ const args = parse(process.argv.slice(2), {
 
 const usage = (exitCode = 1): never => {
   process.stderr.write(
-    'GitHub Desktop Plus CLI usage: \n' +
+    "Ignat's GitHub Desktop Plus CLI usage: \n" +
       '  github-desktop-plus-cli                           Open the current directory\n' +
       '  github-desktop-plus-cli open [path]               Open the provided path\n' +
       '  github-desktop-plus-cli clone [-b branch] <url>   Clone the repository by url or name/owner\n' +

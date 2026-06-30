@@ -1,4 +1,4 @@
-# GitHub Desktop Plus
+# Ignat's GitHub Desktop Plus
 
 This is an **up-to-date** fork of [GitHub Desktop](https://desktop.github.com) with additional features and improvements.
 
@@ -16,7 +16,7 @@ This is an **up-to-date** fork of [GitHub Desktop](https://desktop.github.com) w
 
 [^1]: Rich integration with GitHub, GitHub Enterprise, Bitbucket Cloud, GitLab Cloud, self-hosted GitLab, Codeberg Cloud, self-hosted Forgejo, Gitea Cloud, and self-hosted Gitea. Multi-account support is available for all of them (e.g., sign in to multiple GitHub accounts at the same time).
 
-## Additional Features in GitHub Desktop Plus ✨
+## Additional Features in Ignat's GitHub Desktop Plus ✨
 
 **See the [full list of features here](https://desktop-plus.org/#feature-list).**
 
@@ -71,12 +71,12 @@ For this reason, **I recommend using Winget instead of the manual download**.
 brew install pol-rivero/tap/github-desktop-plus
 ```
 
-Make sure to run `brew update` regularly to get the latest updates for GitHub Desktop Plus.
+Make sure to run `brew update` regularly to get the latest updates for Ignat's GitHub Desktop Plus.
 
 #### Option 2: Manual download (Not recommended)
 
 Download and extract the ZIP file from the [releases page](https://github.com/desktop-plus/desktop-plus/releases/latest). Click the app file to run it.  
-If you encounter the error "Apple could not verify this app is free of malware", go to "System Settings" > "Privacy & Security", scroll down to "Security" and click "Open Anyway" on "GitHub Desktop Plus".
+If you encounter the error "Apple could not verify this app is free of malware", go to "System Settings" > "Privacy & Security", scroll down to "Security" and click "Open Anyway" on "Ignat's GitHub Desktop Plus".
 
 | **64-bit x86** | **64-bit ARM (Apple Silicon)** |
 | --- | --- |
@@ -125,7 +125,7 @@ Create the repository file:
 
 ```bash
 sudo rpm --import https://gpg.desktop-plus.org/public.key
-echo -e "[desktop-plus]\nname=GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/yum.repos.d/desktop-plus.repo
+echo -e "[desktop-plus]\nname=Ignat's GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/yum.repos.d/desktop-plus.repo
 ```
 
 Update the package list and install:
@@ -159,7 +159,7 @@ Create the repository file:
 
 ```bash
 sudo rpm --import https://gpg.desktop-plus.org/public.key
-echo -e "[desktop-plus]\nname=GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/zypp/repos.d/desktop-plus.repo
+echo -e "[desktop-plus]\nname=Ignat's GitHub Desktop Plus\nbaseurl=https://rpm.desktop-plus.org/\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=https://gpg.desktop-plus.org/public.key" | sudo tee /etc/zypp/repos.d/desktop-plus.repo
 ```
 
 Update the package list and install:
@@ -246,7 +246,7 @@ Before opening a new issue, please check the [Known Issues](docs/known-issues.md
 
 ## Command Line Interface 💻
 
-GitHub Desktop Plus includes a CLI (`github-desktop-plus-cli`) for opening and cloning repositories from the terminal. See the [CLI documentation](docs/cli.md) for usage details and instructions on creating a shorter alias.
+Ignat's GitHub Desktop Plus includes a CLI (`github-desktop-plus-cli`) for opening and cloning repositories from the terminal. See the [CLI documentation](docs/cli.md) for usage details and instructions on creating a shorter alias.
 
 ## Running the app locally 🏗️
 

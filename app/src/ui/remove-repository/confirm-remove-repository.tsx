@@ -67,10 +67,12 @@ export class ConfirmRemoveRepository extends React.Component<
         <DialogContent>
           <p>
             Are you sure you want to remove the repository "
-            {this.props.repository.name}" from GitHub Desktop Plus?
+            {this.props.repository.name}" from Ignat's GitHub Desktop Plus?
           </p>
           <div className="description">
-            <p>The repository will be removed from GitHub Desktop Plus:</p>
+            <p>
+              The repository will be removed from Ignat's GitHub Desktop Plus:
+            </p>
             <p>
               <Ref>{this.props.repository.path}</Ref>
             </p>

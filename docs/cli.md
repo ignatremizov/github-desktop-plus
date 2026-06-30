@@ -1,6 +1,6 @@
 # Command Line Interface
 
-GitHub Desktop Plus includes a CLI that lets you open repositories and clone them directly from the terminal.
+Ignat's GitHub Desktop Plus includes a CLI that lets you open repositories and clone them directly from the terminal.
 
 ## Usage
 

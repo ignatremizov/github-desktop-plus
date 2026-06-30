@@ -48,8 +48,9 @@ declare const __LINUX__: boolean
 declare const __FLATPAK__: boolean
 
 /**
- * The product name of the app, this is intended to be a compile-time
- * replacement for app.getName
+ * The display name of the app, this is intended to be a compile-time
+ * replacement for app.getName while package/config identity can keep using
+ * productName.
  * (https://www.electronjs.org/docs/latest/api/app#appgetname)
  */
 declare const __APP_NAME__: string

@@ -96,7 +96,7 @@ export class About extends React.Component<IAboutProps> {
       <Row>
         <p className="no-padding">
           <LinkButton uri={DesktopPlusReleaseNotesUri}>
-            GitHub Desktop Plus Releases
+            Ignat's GitHub Desktop Plus Releases
           </LinkButton>
           <span className="separator">|</span>
           <LinkButton uri={UpstreamReleaseNotesUri}>
@@ -111,8 +111,8 @@ export class About extends React.Component<IAboutProps> {
     if (__LINUX__) {
       return (
         <p>
-          Please visit the GitHub Desktop Plus release page for release notes and to
-          download the latest version.
+          Please visit Ignat's GitHub Desktop Plus release page for release
+          notes and to download the latest version.
         </p>
       )
     }
@@ -215,7 +215,12 @@ export class About extends React.Component<IAboutProps> {
         {this.renderUpdateErrors()}
         <DialogContent>
           <Row className="logo">
-            <img src={DesktopLogo} alt="GitHub Desktop Plus" width="64" height="64" />
+            <img
+              src={DesktopLogo}
+              alt="Ignat's GitHub Desktop Plus"
+              width="64"
+              height="64"
+            />
           </Row>
           <h1 id={titleId}>About {name}</h1>
           <p className="no-padding">
@@ -240,7 +245,7 @@ export class About extends React.Component<IAboutProps> {
             </p>
             <p className="terms-and-license">
               <LinkButton uri="https://gh.io/copilot-for-desktop-transparency">
-                Responsible use of Copilot in GitHub Desktop Plus
+                Responsible use of Copilot in Ignat's GitHub Desktop Plus
               </LinkButton>
             </p>
           </div>

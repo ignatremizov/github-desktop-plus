@@ -44,12 +44,12 @@ export class WorkflowPushRejectedDialog extends React.Component<
           <p>
             The push was rejected by the server for containing a modification to
             the workflow file <Ref>{this.props.rejectedPath}</Ref>. In order to
-            be able to push to workflow files GitHub Desktop Plus needs to request
-            additional permissions.
+            be able to push to workflow files Ignat's GitHub Desktop Plus needs
+            to request additional permissions.
           </p>
           <p>
-            Would you like to open a browser to grant GitHub Desktop Plus permission to
-            update workflow files?
+            Would you like to open a browser to grant Ignat's GitHub Desktop
+            Plus permission to update workflow files?
           </p>
         </DialogContent>
         <DialogFooter>

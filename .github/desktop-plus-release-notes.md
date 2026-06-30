@@ -1,4 +1,4 @@
-GitHub Desktop Plus v3.6.4-alpha4
+Ignat's GitHub Desktop Plus v3.6.4-alpha4
 
 ## **Changes and improvements:**
 

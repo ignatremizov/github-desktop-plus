@@ -46,7 +46,7 @@ function removeExistingSymlink(asAdmin: boolean) {
       if (error !== null) {
         reject(
           new Error(
-            `Failed to remove file at ${InstalledCLIPath}. Authorization of GitHub Desktop Plus Helper is required.`
+            `Failed to remove file at ${InstalledCLIPath}. Authorization of Ignat's GitHub Desktop Plus Helper is required.`
           )
         )
         return

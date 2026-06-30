@@ -3,6 +3,7 @@ import HtmlWebpackPlugin from 'html-webpack-plugin'
 import webpack from 'webpack'
 import merge from 'webpack-merge'
 import { getReplacements } from './app-info'
+import { displayName } from './package.json'
 
 export const externals = ['7zip']
 
@@ -110,7 +111,7 @@ export const crash = merge({}, commonConfig, {
   target: 'electron-renderer',
   plugins: [
     new HtmlWebpackPlugin({
-      title: 'Desktop Plus',
+      title: displayName,
       filename: 'crash.html',
       chunks: ['crash'],
     }),

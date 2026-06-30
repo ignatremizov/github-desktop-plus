@@ -86,7 +86,7 @@ export class Advanced extends React.Component<
   private reportDesktopUsageLabel() {
     return (
       <span>
-        Help GitHub Desktop Plus improve by submitting{' '}
+        Help Ignat's GitHub Desktop Plus improve by submitting{' '}
         <LinkButton uri={SamplesURL}>usage stats</LinkButton>
       </span>
     )

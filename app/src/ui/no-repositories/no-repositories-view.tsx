@@ -97,7 +97,10 @@ export class NoRepositoriesView extends React.Component<
         <section aria-label="Let's get started!">
           <header>
             <h1>Let's get started!</h1>
-            <p>Add a repository to GitHub Desktop Plus to start collaborating</p>
+            <p>
+              Add a repository to Ignat's GitHub Desktop Plus to start
+              collaborating
+            </p>
           </header>
 
           <div className="content">

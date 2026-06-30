@@ -47,9 +47,9 @@ const DefaultTitle = 'Sign in'
 
 const browserSignInInfoContent = (
   <p>
-    Your browser will redirect you back to GitHub Desktop Plus once you've signed in.
-    If your browser asks for your permission to launch GitHub Desktop Plus, please
-    allow it.
+    Your browser will redirect you back to Ignat's GitHub Desktop Plus once
+    you've signed in. If your browser asks for your permission to launch Ignat's
+    GitHub Desktop Plus, please allow it.
   </p>
 )
 

@@ -16,11 +16,11 @@ import { pathExists } from '../../path-exists'
 
 const nl = __WIN32__ ? '\r\n' : '\n'
 const InitialReadmeContents =
-  `# Welcome to GitHub Desktop Plus!${nl}${nl}` +
+  `# Welcome to Ignat's GitHub Desktop Plus!${nl}${nl}` +
   `This is your README. READMEs are where you can communicate ` +
   `what your project is and how to use it.${nl}${nl}` +
   `Write your name on line 6, save it, and then head ` +
-  `back to GitHub Desktop Plus.${nl}`
+  `back to Ignat's GitHub Desktop Plus.${nl}`
 
 async function createAPIRepository(account: Account, name: string) {
   const api = new API(account.endpoint, account.token, account.login)
@@ -29,7 +29,7 @@ async function createAPIRepository(account: Account, name: string) {
     return await api.createRepository(
       null,
       name,
-      'GitHub Desktop Plus tutorial repository',
+      "Ignat's GitHub Desktop Plus tutorial repository",
       true
     )
   } catch (err) {
