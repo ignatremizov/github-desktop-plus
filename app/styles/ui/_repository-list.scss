@@ -91,6 +91,14 @@
         margin-right: 2px;
         vertical-align: text-bottom;
       }
+
+      /* Used to highlight substring matches in filtered lists */
+      mark {
+        font-weight: bold;
+        /* Reset browser defaults */
+        background-color: inherit;
+        color: currentColor;
+      }
     }
 
     .worktree-path-disambiguation {

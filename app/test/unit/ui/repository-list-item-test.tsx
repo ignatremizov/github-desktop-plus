@@ -172,4 +172,28 @@ describe('RepositoryListItem', () => {
     assert.equal(name?.textContent, 'repo')
     assert.equal(pathDisambiguation?.textContent, '/tmp/worktree-path')
   })
+
+  it('highlights matched text in the branch badge', () => {
+    const repository = createRepository()
+    const view = render(
+      <RepositoryListItem
+        repository={repository}
+        title="desktop"
+        needsDisambiguation={false}
+        matches={noMatches}
+        aheadBehind={null}
+        changedFilesCount={0}
+        branchName="feature/ticket-1234-target-scoring"
+        branchNameHighlight={[20, 21, 22, 23, 24, 25]}
+        worktreePathDisambiguation={null}
+        isNestedWorktree={false}
+        isPrunableWorktree={false}
+        worktree={null}
+      />
+    )
+
+    const mark = view.container.querySelector('.branch-name mark')
+
+    assert.equal(mark?.textContent, 'target')
+  })
 })

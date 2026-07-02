@@ -41,7 +41,10 @@ import {
 } from '../repositories-list/repository-list-item-context-menu'
 import { openRepositoryInNewWindow } from '../main-process-proxy'
 import { enableWorktreeSupport } from '../../lib/feature-flag'
-import { SectionFilterList } from '../lib/section-filter-list'
+import {
+  getFilteredItems,
+  SectionFilterList,
+} from '../lib/section-filter-list'
 import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
@@ -151,65 +154,308 @@ export function shouldShowRepositoryListBranchName(
   }
 }
 
-const isNestedLinkedWorktreeListItem = (item: IRepositoryListItem) =>
-  item.worktree !== null && item.worktree.type === 'linked'
+interface IContiguousMatchRank {
+  readonly textIndex: number
+  readonly characterIndex: number
+}
 
-const getListItemHierarchyKey = (item: IRepositoryListItem): string =>
-  item.familyMainPath !== null
-    ? `worktree:${item.familyMainPath}`
-    : `repository:${item.repository.id}`
+const normalizeFilterText = (filterText: string) =>
+  filterText.trim().toLowerCase()
+
+export const getRepositoryListFilterQuery = (filterText: string) => {
+  const normalizedFilterText = normalizeFilterText(filterText)
+  const wildcardStrippedFilterText = normalizedFilterText.replace(/\*/g, '')
+  const filterQuery =
+    wildcardStrippedFilterText.length > 0
+      ? wildcardStrippedFilterText
+      : normalizedFilterText
+
+  return isPathLikeFilterText(filterQuery)
+    ? normalizePath(filterQuery)
+    : filterQuery
+}
+
+const isPathLikeFilterText = (filterText: string) =>
+  filterText.includes('/') || filterText.includes('\\')
+
+const getNormalizedPathFilterText = (filterText: string) =>
+  normalizePath(normalizeFilterText(filterText))
+
+const hasExactPathFilterMatch = (
+  item: IRepositoryListItem,
+  filterText: string
+) => {
+  if (!isPathLikeFilterText(filterText)) {
+    return false
+  }
+
+  const normalizedPathFilter = getNormalizedPathFilterText(filterText)
+  return item.pathText.some(
+    pathText => normalizePath(pathText).toLowerCase() === normalizedPathFilter
+  )
+}
+
+export const getRepositoryListFilterText = (
+  item: IRepositoryListItem,
+  filterText: string
+): ReadonlyArray<string> => {
+  const filterQuery = getRepositoryListFilterQuery(filterText)
+
+  if (filterQuery.length === 0) {
+    return item.text
+  }
+
+  const [title, ...subtitleText] = item.text
+  const visibleDisambiguationText =
+    item.worktreePathDisambiguation !== null
+      ? [item.worktreePathDisambiguation]
+      : []
+  const matchingSubtitleText = [
+    ...visibleDisambiguationText,
+    ...subtitleText.filter(text => text.toLowerCase().includes(filterQuery)),
+  ]
+  const matchingPathText = hasExactPathFilterMatch(item, filterQuery)
+    ? item.pathText
+    : []
+  const searchableSubtitleText = [
+    ...matchingSubtitleText,
+    ...matchingPathText,
+  ]
+
+  return searchableSubtitleText.length > 0
+    ? [title, searchableSubtitleText.join(' ')]
+    : [title]
+}
+
+const compareContiguousMatchRank = (
+  x: IContiguousMatchRank,
+  y: IContiguousMatchRank
+) => x.textIndex - y.textIndex || x.characterIndex - y.characterIndex
+
+const getContiguousMatchIndexes = (
+  text: string,
+  filterText: string
+): ReadonlyArray<number> => {
+  const characterIndex = text.toLowerCase().indexOf(filterText)
+  if (characterIndex === -1) {
+    return []
+  }
+
+  return Array.from(
+    { length: filterText.length },
+    (_, index) => characterIndex + index
+  )
+}
+
+const getVisibleContiguousMatchText = (
+  item: IRepositoryListItem,
+  filterText: string,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): ReadonlyArray<string> => {
+  const text = [item.title]
+
+  if (
+    shouldShowRepositoryListBranchName(item, showBranchNameInRepoList) &&
+    item.branchName !== null
+  ) {
+    text.push(item.branchName)
+  }
+
+  if (item.worktreePathDisambiguation !== null) {
+    text.push(item.worktreePathDisambiguation)
+  }
+
+  if (hasExactPathFilterMatch(item, filterText)) {
+    text.push(...item.pathText)
+  }
+
+  return text
+}
+
+const getContiguousMatchRank = (
+  filterText: string,
+  item: IRepositoryListItem,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): IContiguousMatchRank | null => {
+  let bestRank: IContiguousMatchRank | null = null
+
+  getVisibleContiguousMatchText(
+    item,
+    filterText,
+    showBranchNameInRepoList
+  ).forEach((text, textIndex) => {
+    const characterIndex = text.toLowerCase().indexOf(filterText)
+    if (characterIndex === -1) {
+      return
+    }
+
+    const rank = { textIndex, characterIndex }
+    if (
+      bestRank === null ||
+      compareContiguousMatchRank(rank, bestRank) < 0
+    ) {
+      bestRank = rank
+    }
+  })
+
+  return bestRank
+}
+
+const compareRepositoryListMatches = (
+  filterText: string,
+  x: IMatch<IRepositoryListItem>,
+  y: IMatch<IRepositoryListItem>,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): number => {
+  const xContiguousMatch = getContiguousMatchRank(
+    filterText,
+    x.item,
+    showBranchNameInRepoList
+  )
+  const yContiguousMatch = getContiguousMatchRank(
+    filterText,
+    y.item,
+    showBranchNameInRepoList
+  )
+
+  if (xContiguousMatch !== null && yContiguousMatch === null) {
+    return -1
+  }
+
+  if (xContiguousMatch === null && yContiguousMatch !== null) {
+    return 1
+  }
+
+  if (xContiguousMatch !== null && yContiguousMatch !== null) {
+    const contiguousMatchComparison = compareContiguousMatchRank(
+      xContiguousMatch,
+      yContiguousMatch
+    )
+    if (contiguousMatchComparison !== 0) {
+      return contiguousMatchComparison
+    }
+  }
+
+  return y.score - x.score
+}
+
+const sortRepositoryListMatches = (
+  filterText: string,
+  items: ReadonlyArray<IMatch<IRepositoryListItem>>,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): ReadonlyArray<IMatch<IRepositoryListItem>> => {
+  const normalizedFilterText = normalizeFilterText(filterText)
+  if (normalizedFilterText.length === 0) {
+    return items
+  }
+
+  const filterQuery = getRepositoryListFilterQuery(normalizedFilterText)
+  return [...items].sort((x, y) =>
+    compareRepositoryListMatches(
+      filterQuery,
+      x,
+      y,
+      showBranchNameInRepoList
+    )
+  )
+}
+
+export const getRepositoryListBranchNameHighlight = (
+  branchName: string | null,
+  filterText: string
+): ReadonlyArray<number> => {
+  const filterQuery = getRepositoryListFilterQuery(filterText)
+  if (branchName === null || filterQuery.length === 0) {
+    return []
+  }
+
+  return getContiguousMatchIndexes(branchName, filterQuery)
+}
+
+const getBestRepositoryListGroupMatch = (
+  group: IFilterListGroup<IRepositoryListItem, RepositoryListGroup>,
+  filterText: string,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): IMatch<IRepositoryListItem> | null => {
+  const filterQuery = getRepositoryListFilterQuery(filterText)
+  return (
+    sortRepositoryListMatches(
+      filterQuery,
+      getFilteredItems(filterQuery, group.items, undefined, item =>
+        getRepositoryListFilterText(item, filterQuery)
+      ),
+      showBranchNameInRepoList
+    )[0] ?? null
+  )
+}
+
+export function sortRepositoryListGroupsForFilter(
+  groups: ReadonlyArray<
+    IFilterListGroup<IRepositoryListItem, RepositoryListGroup>
+  >,
+  filterText: string,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): ReadonlyArray<
+  IFilterListGroup<IRepositoryListItem, RepositoryListGroup>
+> {
+  const normalizedFilterText = normalizeFilterText(filterText)
+  if (normalizedFilterText.length === 0) {
+    return groups
+  }
+  const filterQuery = getRepositoryListFilterQuery(normalizedFilterText)
+
+  return groups
+    .map((group, index) => ({
+      group,
+      index,
+      bestMatch: getBestRepositoryListGroupMatch(
+        group,
+        filterQuery,
+        showBranchNameInRepoList
+      ),
+    }))
+    .sort((x, y) => {
+      if (x.bestMatch !== null && y.bestMatch === null) {
+        return -1
+      }
+
+      if (x.bestMatch === null && y.bestMatch !== null) {
+        return 1
+      }
+
+      if (x.bestMatch !== null && y.bestMatch !== null) {
+        const matchComparison = compareRepositoryListMatches(
+          filterQuery,
+          x.bestMatch,
+          y.bestMatch,
+          showBranchNameInRepoList
+        )
+        if (matchComparison !== 0) {
+          return matchComparison
+        }
+      }
+
+      return x.index - y.index
+    })
+    .map(({ group }) => group)
+}
 
 export function postProcessRepositoryListMatches(
   _groups: ReadonlyArray<
     IFilterListGroup<IRepositoryListItem, RepositoryListGroup>
   >,
   filterText: string,
-  showWorktreesInRepoList: boolean
+  _showWorktreesInRepoList: boolean,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
 ) {
-  if (!showWorktreesInRepoList || !filterText) {
+  if (normalizeFilterText(filterText).length === 0) {
     return (items: ReadonlyArray<IMatch<IRepositoryListItem>>) => items
   }
 
   return (
     items: ReadonlyArray<IMatch<IRepositoryListItem>>
-  ): ReadonlyArray<IMatch<IRepositoryListItem>> => {
-    // Keep matched rows in worktree-family order without adding rows that did
-    // not match the active filter.
-    const output: IMatch<IRepositoryListItem>[] = []
-    const remaining = [...items]
-
-    while (remaining.length > 0) {
-      const match = remaining.shift()!
-      const hierarchyKey = getListItemHierarchyKey(match.item)
-
-      // Collect this match plus every remaining match for the same hierarchy,
-      // preserving relative order.
-      const hierarchyMatches = [match]
-      for (let i = 0; i < remaining.length; ) {
-        if (getListItemHierarchyKey(remaining[i].item) === hierarchyKey) {
-          hierarchyMatches.push(...remaining.splice(i, 1))
-        } else {
-          i++
-        }
-      }
-
-      // Main worktree rows that actually matched go first.
-      for (const m of hierarchyMatches) {
-        if (!isNestedLinkedWorktreeListItem(m.item)) {
-          output.push(m)
-        }
-      }
-
-      // Then the linked worktree rows, in their original matched order.
-      for (const m of hierarchyMatches) {
-        if (isNestedLinkedWorktreeListItem(m.item)) {
-          output.push(m)
-        }
-      }
-    }
-
-    return output
-  }
+  ): ReadonlyArray<IMatch<IRepositoryListItem>> =>
+    sortRepositoryListMatches(filterText, items, showBranchNameInRepoList)
 }
 
 export function getWorktreeFamilyMainPath(
@@ -428,6 +674,8 @@ export class RepositoriesList extends React.Component<
 
   private renderItem = (item: IRepositoryListItem, matches: IMatches) => {
     const repository = item.repository
+    const branchName = this.shouldShowBranchName(item) ? item.branchName : null
+
     return (
       <RepositoryListItem
         key={item.id}
@@ -437,7 +685,11 @@ export class RepositoriesList extends React.Component<
         matches={matches}
         aheadBehind={item.aheadBehind}
         changedFilesCount={item.changedFilesCount}
-        branchName={this.shouldShowBranchName(item) ? item.branchName : null}
+        branchName={branchName}
+        branchNameHighlight={getRepositoryListBranchNameHighlight(
+          branchName,
+          this.props.filterText
+        )}
         worktreePathDisambiguation={item.worktreePathDisambiguation}
         isNestedWorktree={item.isNestedWorktree}
         isPrunableWorktree={item.isPrunableWorktree}
@@ -872,6 +1124,12 @@ export class RepositoriesList extends React.Component<
       }
     }
 
+    groups = sortRepositoryListGroupsForFilter(
+      groups,
+      this.props.filterText,
+      this.props.showBranchNameInRepoList
+    )
+
     // So there's two types of selection at play here. There's the repository
     // selection for the whole app and then there's the keyboard selection in
     // the list itself. If the user has selected a repository using keyboard
@@ -887,8 +1145,9 @@ export class RepositoriesList extends React.Component<
           rowHeight={RowHeight}
           selectedItem={selectedItem}
           filterText={this.props.filterText}
+          getFilterQuery={getRepositoryListFilterQuery}
+          getFilterText={getRepositoryListFilterText}
           onFilterTextChanged={this.props.onFilterTextChanged}
-          preserveItemOrderWhenFiltering={true}
           renderItem={this.renderItem}
           renderRowFocusTooltip={this.renderRowFocusTooltip}
           renderGroupHeader={this.renderGroupHeader}
@@ -937,7 +1196,8 @@ export class RepositoriesList extends React.Component<
     return postProcessRepositoryListMatches(
       groups,
       filterText,
-      this.props.showWorktreesInRepoList
+      this.props.showWorktreesInRepoList,
+      this.props.showBranchNameInRepoList
     )
   }
 

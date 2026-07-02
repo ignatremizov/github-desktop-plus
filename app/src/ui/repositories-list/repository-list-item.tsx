@@ -35,6 +35,9 @@ interface IRepositoryListItemProps {
   /** The name of the current branch, if it should be displayed */
   readonly branchName: string | null
 
+  /** The characters in the branch name to highlight */
+  readonly branchNameHighlight?: ReadonlyArray<number>
+
   /** Parent path to show when duplicate worktree names need visible disambiguation. */
   readonly worktreePathDisambiguation: string | null
 
@@ -52,7 +55,10 @@ interface IRepositoryListItemProps {
 }
 
 /** Renders the branch name badge shown next to a repository or worktree. */
-function renderBranchNameBadge(branchName: string | null) {
+function renderBranchNameBadge(
+  branchName: string | null,
+  branchNameHighlight: ReadonlyArray<number> = []
+) {
   if (!branchName) {
     return null
   }
@@ -60,7 +66,7 @@ function renderBranchNameBadge(branchName: string | null) {
   return (
     <span className="branch-name">
       <Octicon className="branch-icon" symbol={octicons.gitBranch} />
-      {branchName}
+      <HighlightText text={branchName} highlight={branchNameHighlight} />
     </span>
   )
 }
@@ -127,7 +133,10 @@ export class RepositoryListItem extends React.Component<
           />
         </div>
 
-        {renderBranchNameBadge(this.props.branchName)}
+        {renderBranchNameBadge(
+          this.props.branchName,
+          this.props.branchNameHighlight
+        )}
         {renderWorktreePathDisambiguation(
           this.props.worktreePathDisambiguation
         )}
@@ -167,7 +176,10 @@ export class RepositoryListItem extends React.Component<
           />
         </div>
 
-        {renderBranchNameBadge(this.props.branchName)}
+        {renderBranchNameBadge(
+          this.props.branchName,
+          this.props.branchNameHighlight
+        )}
         {renderWorktreePathDisambiguation(
           this.props.worktreePathDisambiguation
         )}
@@ -226,6 +238,7 @@ export class RepositoryListItem extends React.Component<
         nextProps.title !== this.props.title ||
         nextProps.matches !== this.props.matches ||
         nextProps.branchName !== this.props.branchName ||
+        nextProps.branchNameHighlight !== this.props.branchNameHighlight ||
         nextProps.worktreePathDisambiguation !==
           this.props.worktreePathDisambiguation ||
         nextProps.needsDisambiguation !== this.props.needsDisambiguation ||

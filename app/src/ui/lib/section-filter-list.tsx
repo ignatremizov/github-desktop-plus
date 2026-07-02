@@ -136,6 +136,17 @@ interface ISectionFilterListProps<T extends IFilterListItem, GroupIdentifier> {
   /** The current filter text to use in the form */
   readonly filterText?: string
 
+  /** Returns the searchable text for an item and the active filter. */
+  // eslint-disable-next-line react/no-unused-prop-types
+  readonly getFilterText?: (
+    item: T,
+    filterText: string
+  ) => ReadonlyArray<string>
+
+  /** Returns the search query used to filter items. */
+  // eslint-disable-next-line react/no-unused-prop-types
+  readonly getFilterQuery?: (filterText: string) => string
+
   /** Called when the filter text is changed by the user */
   readonly onFilterTextChanged?: (text: string) => void
 
@@ -719,10 +730,11 @@ export function getText<T extends IFilterListItem>(
 export function getFilteredItems<T extends IFilterListItem>(
   filter: string,
   items: ReadonlyArray<T>,
-  preserveItemOrderWhenFiltering?: boolean
+  preserveItemOrderWhenFiltering?: boolean,
+  getItemText: (item: T) => ReadonlyArray<string> = getText
 ): ReadonlyArray<IMatch<T>> {
   const filteredItems: ReadonlyArray<IMatch<T>> = filter
-    ? match(filter, items, getText)
+    ? match(filter, items, getItemText)
     : items.map(item => ({
         score: 1,
         matches: { title: [], subtitle: [] },
@@ -785,7 +797,8 @@ function createStateUpdate<T extends IFilterListItem, GroupIdentifier>(
   state: IFilterListState<T, GroupIdentifier> | null
 ) {
   const rows = new Array<Array<IFilterListRow<T, GroupIdentifier>>>()
-  const filter = (props.filterText || '').toLowerCase()
+  const rawFilter = props.filterText || ''
+  const filter = (props.getFilterQuery?.(rawFilter) ?? rawFilter).toLowerCase()
   let selectedRow = InvalidRowIndexPath
   let section = 0
   const selectedItem = props.selectedItem
@@ -796,7 +809,10 @@ function createStateUpdate<T extends IFilterListItem, GroupIdentifier>(
     const items = getFilteredItems(
       filter,
       group.items,
-      props.preserveItemOrderWhenFiltering
+      props.preserveItemOrderWhenFiltering,
+      props.getFilterText === undefined
+        ? getText
+        : item => props.getFilterText!(item, filter)
     )
 
     if (!items.length) {

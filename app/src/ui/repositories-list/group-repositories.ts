@@ -63,6 +63,7 @@ export type Repositoryish = Repository | CloningRepository
 
 export interface IRepositoryListItem extends IFilterListItem {
   readonly text: ReadonlyArray<string>
+  readonly pathText: ReadonlyArray<string>
   readonly id: string
   readonly title: string
   readonly repository: Repositoryish
@@ -498,6 +499,19 @@ const getWorktreeSearchText = (
   return [title, Array.from(new Set(searchTerms)).join(' ')]
 }
 
+const getPathSearchText = (
+  ...paths: ReadonlyArray<string>
+): ReadonlyArray<string> =>
+  Array.from(new Set(paths.flatMap(path => [path, normalizePath(path)])))
+
+const getWorktreePathSearchText = (
+  repository: Repository,
+  worktree: WorktreeEntry
+): ReadonlyArray<string> =>
+  normalizePath(repository.path) === normalizePath(worktree.path)
+    ? getPathSearchText(worktree.path, repository.path)
+    : getPathSearchText(worktree.path)
+
 /**
  * Builds the list rows for a single repository: the repository row itself
  * (representing the main worktree) followed by one row per linked worktree.
@@ -510,7 +524,11 @@ const buildPlainRepositoryRow = (
   const title = getDisplayTitle(r)
 
   return {
-    text: r instanceof Repository ? [title, nameOf(r)] : [title],
+    text:
+      r instanceof Repository
+        ? [title, nameOf(r)]
+        : [title],
+    pathText: r instanceof Repository ? getPathSearchText(r.path) : [],
     id: r.id.toString(),
     title,
     repository: r,
@@ -612,6 +630,10 @@ const buildRecentRepositoryRows = (
   return [
     {
       text: getWorktreeSearchText(title, rowRepository, worktree, mainWorktree),
+      pathText: getWorktreePathSearchText(
+        rowRepository,
+        worktree
+      ),
       id:
         worktree.type === 'main' && mainRepository !== undefined
           ? mainRepository.id.toString()
@@ -703,6 +725,10 @@ function buildRepositoryRows(
       mainWorktree,
       mainWorktree
     ),
+    pathText: getWorktreePathSearchText(
+      mainRowRepository,
+      mainWorktree
+    ),
     id:
       mainRepository !== undefined
         ? mainRepository.id.toString()
@@ -753,6 +779,10 @@ function buildRepositoryRows(
           rowRepository,
           wt,
           mainWorktree
+        ),
+        pathText: getWorktreePathSearchText(
+          rowRepository,
+          wt
         ),
         id: `${rowRepository.id}:${worktreePath}`,
         title: linkedTitle,
