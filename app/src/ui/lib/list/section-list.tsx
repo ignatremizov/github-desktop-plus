@@ -1408,13 +1408,19 @@ export class SectionList extends React.Component<
           // overflow-y of 'auto', letting it capture the mouse wheel and snap
           // back to the controlled scrollTop instead of scrolling the list.
           // See https://github.com/desktop/desktop/issues/22387.
+          className="section-list-section-grid"
           style={{
             ...params.style,
             width: '100%',
+            overflow: 'hidden',
             overflowX: 'hidden',
             overflowY: 'hidden',
           }}
-          containerStyle={{ overflow: 'hidden' }}
+          containerStyle={{
+            overflow: 'hidden',
+            overflowX: 'hidden',
+            overflowY: 'hidden',
+          }}
           tabIndex={-1}
           aria-label={this.props.getSectionAriaLabel?.(section)}
         />

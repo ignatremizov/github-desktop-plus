@@ -17,6 +17,10 @@
     background: var(--background-color);
   }
 
+  .section-list-section-grid.ReactVirtualized__Grid {
+    overflow: hidden !important;
+  }
+
   .keyboard-insertion-element {
     display: block;
     position: fixed;
