@@ -89,7 +89,7 @@ const filterRepositoryListItems = (
   items: ReadonlyArray<IRepositoryListItem>
 ) => {
   const filterQuery = getRepositoryListFilterQuery(filterText)
-  return getFilteredItems(filterQuery, items, undefined, item =>
+  return getFilteredItems(filterQuery, items, true, item =>
     getRepositoryListFilterText(item, filterQuery)
   )
 }
@@ -608,6 +608,55 @@ describe('RepositoriesList', () => {
     assert.ok(
       processedItems[0].matches.title.length > 0 ||
         processedItems[0].matches.subtitle.length > 0
+    )
+  })
+
+  it('keeps matched main worktree rows before linked worktree rows when filtering', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const linkedPath = '/tmp/projects/.worktrees/project-target-module'
+    const unrelatedPath = '/tmp/projects/project-target-archive'
+    const mainRepo = new Repository(mainPath, 1, null, false)
+    const linkedRepo = new Repository(linkedPath, 2, null, false)
+    const unrelatedRepo = new Repository(unrelatedPath, 3, null, false)
+    const mainWorktree = buildWorktree(
+      mainPath,
+      'main',
+      'refs/heads/feature/target-root'
+    )
+    const linkedWorktree = buildWorktree(
+      linkedPath,
+      'linked',
+      'refs/heads/feature/target-module'
+    )
+    const worktrees = [mainWorktree, linkedWorktree]
+    const worktreeState = new Map<number, ILocalRepositoryState>([
+      [mainRepo.id, buildLocalState(worktrees)],
+      [linkedRepo.id, buildLocalState(worktrees)],
+    ])
+    const groups = groupRepositories(
+      [mainRepo, linkedRepo, unrelatedRepo],
+      worktreeState,
+      []
+    )
+    const group = groups[0]
+    const filteredItems = filterRepositoryListItems('target', group.items)
+    const processedItems = postProcessRepositoryListMatches(
+      groups,
+      'target',
+      true,
+      showBranchNames
+    )(filteredItems)
+
+    const familyPaths = processedItems
+      .filter(match => match.item.familyMainPath === mainPath)
+      .map(match => match.item.worktree?.path)
+
+    assert.deepEqual(familyPaths, [mainPath, linkedPath])
+
+    const allPaths = processedItems.map(match => match.item.worktree?.path)
+    assert.equal(
+      allPaths.indexOf(linkedPath),
+      allPaths.indexOf(mainPath) + 1
     )
   })
 

@@ -5,6 +5,7 @@ import {
   groupRepositories,
   buildPinnedGroup,
   filterPinnedFromGroups,
+  getWorktreeFamilyMainPathFromGitDir,
   isRepositoryListItemPinned,
   IRepositoryListItem,
   Repositoryish,
@@ -360,6 +361,82 @@ const sortRepositoryListMatches = (
   )
 }
 
+const isMainWorktreeListItem = (item: IRepositoryListItem) =>
+  item.familyMainPath !== null &&
+  item.worktree !== null &&
+  item.worktree.type === 'main'
+
+const isLinkedWorktreeListItem = (item: IRepositoryListItem) =>
+  item.familyMainPath !== null &&
+  item.worktree !== null &&
+  item.worktree.type === 'linked'
+
+const sortRepositoryListMatchesWithAnchoredMainWorktrees = (
+  filterText: string,
+  items: ReadonlyArray<IMatch<IRepositoryListItem>>,
+  showBranchNameInRepoList: ShowBranchNameInRepoListSetting
+): ReadonlyArray<IMatch<IRepositoryListItem>> => {
+  const normalizedFilterText = normalizeFilterText(filterText)
+  if (normalizedFilterText.length === 0) {
+    return items
+  }
+
+  const filterQuery = getRepositoryListFilterQuery(normalizedFilterText)
+  const sortedItems = sortRepositoryListMatches(
+    filterQuery,
+    items,
+    showBranchNameInRepoList
+  )
+  const mainMatchesByFamily = new Map<string, IMatch<IRepositoryListItem>>()
+
+  for (const match of sortedItems) {
+    const familyMainPath = match.item.familyMainPath
+    if (familyMainPath !== null && isMainWorktreeListItem(match.item)) {
+      mainMatchesByFamily.set(familyMainPath, match)
+    }
+  }
+
+  if (mainMatchesByFamily.size === 0) {
+    return sortedItems
+  }
+
+  const emittedMatches = new Set<IMatch<IRepositoryListItem>>()
+  const emittedMainFamilies = new Set<string>()
+  const orderedItems = new Array<IMatch<IRepositoryListItem>>()
+
+  for (const match of sortedItems) {
+    const familyMainPath = match.item.familyMainPath
+    const mainMatch =
+      familyMainPath !== null
+        ? mainMatchesByFamily.get(familyMainPath)
+        : undefined
+
+    if (
+      familyMainPath !== null &&
+      mainMatch !== undefined &&
+      isLinkedWorktreeListItem(match.item) &&
+      !emittedMainFamilies.has(familyMainPath)
+    ) {
+      orderedItems.push(mainMatch)
+      emittedMatches.add(mainMatch)
+      emittedMainFamilies.add(familyMainPath)
+    }
+
+    if (emittedMatches.has(match)) {
+      continue
+    }
+
+    orderedItems.push(match)
+    emittedMatches.add(match)
+
+    if (familyMainPath !== null && isMainWorktreeListItem(match.item)) {
+      emittedMainFamilies.add(familyMainPath)
+    }
+  }
+
+  return orderedItems
+}
+
 export const getRepositoryListBranchNameHighlight = (
   branchName: string | null,
   filterText: string
@@ -455,7 +532,11 @@ export function postProcessRepositoryListMatches(
   return (
     items: ReadonlyArray<IMatch<IRepositoryListItem>>
   ): ReadonlyArray<IMatch<IRepositoryListItem>> =>
-    sortRepositoryListMatches(filterText, items, showBranchNameInRepoList)
+    sortRepositoryListMatchesWithAnchoredMainWorktrees(
+      filterText,
+      items,
+      showBranchNameInRepoList
+    )
 }
 
 export function getWorktreeFamilyMainPath(
@@ -470,6 +551,12 @@ export function getWorktreeFamilyMainPath(
 
   if (directMainWorktree !== undefined) {
     return normalizePath(directMainWorktree.path)
+  }
+
+  const gitDirMainWorktreePath =
+    getWorktreeFamilyMainPathFromGitDir(repository)
+  if (gitDirMainWorktreePath !== null) {
+    return gitDirMainWorktreePath
   }
 
   for (const state of localRepositoryStateLookup.values()) {
@@ -1147,6 +1234,7 @@ export class RepositoriesList extends React.Component<
           filterText={this.props.filterText}
           getFilterQuery={getRepositoryListFilterQuery}
           getFilterText={getRepositoryListFilterText}
+          preserveItemOrderWhenFiltering={true}
           onFilterTextChanged={this.props.onFilterTextChanged}
           renderItem={this.renderItem}
           renderRowFocusTooltip={this.renderRowFocusTooltip}

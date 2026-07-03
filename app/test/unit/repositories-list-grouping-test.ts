@@ -1,9 +1,11 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert'
+import * as Path from 'path'
 import {
   buildPinnedGroup,
   filterPinnedFromGroups,
   groupRepositories,
+  getWorktreeFamilyMainPathFromGitDir,
   isRepositoryListItemPinned,
 } from '../../src/ui/repositories-list/group-repositories'
 import {
@@ -227,6 +229,343 @@ describe('repository list grouping', () => {
       grouped[0].items.map(item => item.sourceRepository?.path ?? null),
       [null, mainPath]
     )
+  })
+
+  it('nests saved missing linked worktrees using their stored git dir', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const linkedPath = '/tmp/projects/worktrees/project-alpha-feature-a'
+    const mainRepo = new Repository(
+      mainPath,
+      1,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git')
+    )
+    const linkedRepo = new Repository(
+      linkedPath,
+      2,
+      null,
+      true,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git', 'worktrees', 'project-alpha-feature-a')
+    )
+    const worktrees = [buildWorktree(mainPath, 'main', 'refs/heads/main')]
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [mainRepo.id, buildLocalState(worktrees)],
+    ])
+
+    const grouped = groupRepositories([linkedRepo, mainRepo], worktreeCache, [])
+
+    assert.equal(grouped.length, 1)
+    assert.deepEqual(
+      grouped[0].items.map(item => item.repository.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.worktree?.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isNestedWorktree),
+      [false, true]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isPrunableWorktree),
+      [false, true]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.sourceRepository?.path ?? null),
+      [null, mainPath]
+    )
+  })
+
+  it('keeps saved missing linked worktrees visible before root state loads', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const linkedPath = '/tmp/projects/worktrees/project-alpha-feature-a'
+    const mainRepo = new Repository(
+      mainPath,
+      1,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git')
+    )
+    const linkedRepo = new Repository(
+      linkedPath,
+      2,
+      null,
+      true,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git', 'worktrees', 'project-alpha-feature-a')
+    )
+
+    const grouped = groupRepositories(
+      [linkedRepo, mainRepo],
+      new Map<number, ILocalRepositoryState>(),
+      []
+    )
+
+    assert.equal(grouped.length, 1)
+    assert.deepEqual(
+      grouped[0].items.map(item => item.repository.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.worktree?.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isNestedWorktree),
+      [false, true]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isPrunableWorktree),
+      [false, true]
+    )
+  })
+
+  it('preserves loaded linked worktree metadata when marking it prunable', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const linkedPath = '/tmp/projects/worktrees/project-alpha-feature-a'
+    const mainRepo = new Repository(
+      mainPath,
+      1,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git')
+    )
+    const linkedRepo = new Repository(
+      linkedPath,
+      2,
+      null,
+      true,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git', 'worktrees', 'project-alpha-feature-a')
+    )
+    const worktrees = [
+      buildWorktree(mainPath, 'main', 'refs/heads/main'),
+      buildWorktree(linkedPath, 'linked', 'refs/heads/feature/feature-a'),
+    ]
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [mainRepo.id, buildLocalState(worktrees)],
+    ])
+
+    const grouped = groupRepositories([mainRepo, linkedRepo], worktreeCache, [])
+    const linkedItem = grouped[0].items.find(
+      item => item.worktree?.path === linkedPath
+    )
+
+    assert.notEqual(linkedItem, undefined)
+    assert.equal(linkedItem?.branchName, 'feature/feature-a')
+    assert.equal(linkedItem?.worktree?.head, 'deadbeef')
+    assert.equal(linkedItem?.isPrunableWorktree, true)
+  })
+
+  it('nests missing saved linked repositories by hosted repository identity', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const missingLinkedPath = '/tmp/projects/worktrees/project-alpha-feature-a'
+    const gitHubRepository = gitHubRepoFixture({
+      owner: 'workspace',
+      name: 'project-alpha',
+    })
+    const mainRepo = new Repository(mainPath, 1, gitHubRepository, false)
+    const missingLinkedRepo = new Repository(
+      missingLinkedPath,
+      2,
+      gitHubRepository,
+      true
+    )
+    const worktrees = [buildWorktree(mainPath, 'main', 'refs/heads/main')]
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [mainRepo.id, buildLocalState(worktrees)],
+    ])
+
+    const grouped = groupRepositories(
+      [missingLinkedRepo, mainRepo],
+      worktreeCache,
+      []
+    )
+
+    assert.equal(grouped.length, 1)
+    assert.deepEqual(
+      grouped[0].items.map(item => item.repository.path),
+      [mainPath, missingLinkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.worktree?.path),
+      [mainPath, missingLinkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isNestedWorktree),
+      [false, true]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isPrunableWorktree),
+      [false, true]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.sourceRepository?.path ?? null),
+      [null, mainPath]
+    )
+  })
+
+  it('does not fold missing saved repositories into ambiguous hosted repository families', () => {
+    const firstMainPath = '/tmp/projects/project-alpha'
+    const secondMainPath = '/tmp/copies/project-beta'
+    const missingPath = '/tmp/projects/worktrees/feature-a'
+    const gitHubRepository = gitHubRepoFixture({
+      owner: 'workspace',
+      name: 'shared-project',
+    })
+    const firstMainRepo = new Repository(
+      firstMainPath,
+      1,
+      gitHubRepository,
+      false
+    )
+    const secondMainRepo = new Repository(
+      secondMainPath,
+      2,
+      gitHubRepository,
+      false
+    )
+    const missingRepo = new Repository(missingPath, 3, gitHubRepository, true)
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [
+        firstMainRepo.id,
+        buildLocalState([
+          buildWorktree(firstMainPath, 'main', 'refs/heads/main'),
+        ]),
+      ],
+      [
+        secondMainRepo.id,
+        buildLocalState([
+          buildWorktree(secondMainPath, 'main', 'refs/heads/main'),
+        ]),
+      ],
+    ])
+
+    const grouped = groupRepositories(
+      [missingRepo, firstMainRepo, secondMainRepo],
+      worktreeCache,
+      []
+    )
+    const missingItem = grouped
+      .flatMap(group => group.items)
+      .find(item => item.repository.path === missingPath)
+
+    assert.notEqual(missingItem, undefined)
+    assert.equal(missingItem?.worktree, null)
+    assert.equal(missingItem?.isNestedWorktree, false)
+  })
+
+  it('folds missing saved repositories into the matching hosted repository family', () => {
+    const firstMainPath = '/tmp/projects/project-alpha'
+    const secondMainPath = '/tmp/copies/project-beta'
+    const missingPath = '/tmp/projects/worktrees/project-beta-feature-a'
+    const gitHubRepository = gitHubRepoFixture({
+      owner: 'workspace',
+      name: 'shared-project',
+    })
+    const firstMainRepo = new Repository(
+      firstMainPath,
+      1,
+      gitHubRepository,
+      false
+    )
+    const secondMainRepo = new Repository(
+      secondMainPath,
+      2,
+      gitHubRepository,
+      false
+    )
+    const missingRepo = new Repository(missingPath, 3, gitHubRepository, true)
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [
+        firstMainRepo.id,
+        buildLocalState([
+          buildWorktree(firstMainPath, 'main', 'refs/heads/main'),
+        ]),
+      ],
+      [
+        secondMainRepo.id,
+        buildLocalState([
+          buildWorktree(secondMainPath, 'main', 'refs/heads/main'),
+        ]),
+      ],
+    ])
+
+    const grouped = groupRepositories(
+      [missingRepo, firstMainRepo, secondMainRepo],
+      worktreeCache,
+      []
+    )
+    const foldedItem = grouped
+      .flatMap(group => group.items)
+      .find(item => item.worktree?.path === missingPath)
+
+    assert.notEqual(foldedItem, undefined)
+    assert.equal(foldedItem?.repository.path, missingPath)
+    assert.equal(foldedItem?.isNestedWorktree, true)
+    assert.equal(foldedItem?.isPrunableWorktree, true)
+    assert.equal(foldedItem?.sourceRepository?.path, secondMainPath)
+  })
+
+  it('does not infer worktree families from non-missing git dir paths', () => {
+    const repo = new Repository(
+      '/tmp/projects/project-beta',
+      1,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      '/tmp/git-dirs/worktrees/project-beta'
+    )
+
+    assert.equal(getWorktreeFamilyMainPathFromGitDir(repo), null)
   })
 
   it('keeps saved worktree repositories flat when sidebar worktree rows are disabled', () => {

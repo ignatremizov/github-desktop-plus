@@ -136,6 +136,29 @@ const getMainWorktree = (
   worktrees: ReadonlyArray<WorktreeEntry>
 ): WorktreeEntry | null => worktrees.find(wt => wt.type === 'main') ?? null
 
+export const getWorktreeFamilyMainPathFromGitDir = (
+  repository: Repository
+): string | null => {
+  if (!repository.missing) {
+    return null
+  }
+
+  const gitDir = repository.gitDir
+
+  if (gitDir === undefined) {
+    return null
+  }
+
+  const normalizedGitDir = Path.normalize(gitDir)
+
+  if (Path.basename(Path.dirname(normalizedGitDir)) !== 'worktrees') {
+    return null
+  }
+
+  const commonGitDir = Path.dirname(Path.dirname(normalizedGitDir))
+  return normalizePath(Path.dirname(commonGitDir))
+}
+
 const getFamilyMainPath = (
   repository: Repository,
   localRepositoryStateLookup: ReadonlyMap<number, ILocalRepositoryState>
@@ -158,6 +181,12 @@ const getFamilyMainPathFromLoadedState = (
 
   if (directMainWorktreePath !== null) {
     return directMainWorktreePath
+  }
+
+  const gitDirMainWorktreePath =
+    getWorktreeFamilyMainPathFromGitDir(repository)
+  if (gitDirMainWorktreePath !== null) {
+    return gitDirMainWorktreePath
   }
 
   const repositoryPath = normalizePath(repository.path)
@@ -214,6 +243,87 @@ const getWorktreeDisplayTitle = (
     ? repository.alias
     : Path.basename(worktree.path)
 
+const getRepositoryIdentityKey = (repository: Repository): string | null =>
+  isRepositoryWithGitHubRepository(repository)
+    ? `${repository.gitHubRepository.endpoint}:${repository.gitHubRepository.fullName.toLowerCase()}`
+    : null
+
+const isWorktreeNameRelatedToMainName = (
+  worktreeName: string,
+  mainName: string
+): boolean => {
+  const normalizedWorktreeName = worktreeName.toLowerCase()
+  const normalizedMainName = mainName.toLowerCase()
+  const index = normalizedWorktreeName.indexOf(normalizedMainName)
+
+  if (index === -1) {
+    return false
+  }
+
+  const endIndex = index + normalizedMainName.length
+  const hasPrefixBoundary =
+    index === 0 || /[-_.]/.test(normalizedWorktreeName[index - 1])
+  const hasSuffixBoundary =
+    endIndex === normalizedWorktreeName.length ||
+    /[-_.]/.test(normalizedWorktreeName[endIndex])
+
+  return hasPrefixBoundary && hasSuffixBoundary
+}
+
+const chooseFamilyMainPathForMissingRepository = (
+  repository: Repository,
+  candidateMainPaths: ReadonlyArray<string> | undefined
+): string | undefined => {
+  if (candidateMainPaths === undefined || candidateMainPaths.length === 0) {
+    return undefined
+  }
+
+  if (candidateMainPaths.length === 1) {
+    return candidateMainPaths[0]
+  }
+
+  const repositoryBaseName = Path.basename(repository.path)
+  const relatedCandidates = candidateMainPaths.filter(mainPath =>
+    isWorktreeNameRelatedToMainName(
+      repositoryBaseName,
+      Path.basename(mainPath)
+    )
+  )
+
+  return relatedCandidates.length === 1 ? relatedCandidates[0] : undefined
+}
+
+const mergeWorktreeEntry = (
+  existing: WorktreeEntry,
+  incoming: WorktreeEntry
+): WorktreeEntry => {
+  if (existing === incoming) {
+    return existing
+  }
+
+  const primary =
+    incoming.head.length > 0 || existing.head.length === 0
+      ? incoming
+      : existing
+  const secondary = primary === incoming ? existing : incoming
+  const primaryHasLoadedHead = primary.head.length > 0
+
+  return {
+    ...primary,
+    branch: primaryHasLoadedHead
+      ? primary.branch
+      : primary.branch ?? secondary.branch,
+    head: primary.head || secondary.head,
+    isDetached: primaryHasLoadedHead
+      ? primary.isDetached
+      : primary.branch === null && secondary.branch !== null
+      ? secondary.isDetached
+      : primary.isDetached,
+    isLocked: primary.isLocked || secondary.isLocked,
+    isPrunable: primary.isPrunable || secondary.isPrunable,
+  }
+}
+
 const mergeWorktrees = (
   existing: ReadonlyArray<WorktreeEntry>,
   incoming: ReadonlyArray<WorktreeEntry>
@@ -225,7 +335,14 @@ const mergeWorktrees = (
   }
 
   for (const worktree of incoming) {
-    byPath.set(normalizePath(worktree.path), worktree)
+    const path = normalizePath(worktree.path)
+    const existingWorktree = byPath.get(path)
+    byPath.set(
+      path,
+      existingWorktree === undefined
+        ? worktree
+        : mergeWorktreeEntry(existingWorktree, worktree)
+    )
   }
 
   const worktrees = Array.from(byPath.values())
@@ -233,6 +350,52 @@ const mergeWorktrees = (
     ...worktrees.filter(worktree => worktree.type === 'main'),
     ...worktrees.filter(worktree => worktree.type === 'linked'),
   ]
+}
+
+const getWorktreeBranchFromState = (
+  repoState: ILocalRepositoryState | undefined
+): string | null => {
+  const branchName = repoState?.branchName ?? null
+
+  if (branchName === null) {
+    return null
+  }
+
+  return branchName.startsWith('refs/') ? branchName : `refs/heads/${branchName}`
+}
+
+const buildSavedLinkedWorktreeEntry = (
+  repository: Repository,
+  repoState: ILocalRepositoryState | undefined
+): WorktreeEntry => {
+  const branch = getWorktreeBranchFromState(repoState)
+
+  return {
+    path: repository.path,
+    type: 'linked',
+    branch,
+    head: '',
+    isDetached: branch === null,
+    isLocked: false,
+    isPrunable: repository.missing,
+  }
+}
+
+const buildSavedMainWorktreeEntry = (
+  repository: Repository,
+  repoState: ILocalRepositoryState | undefined
+): WorktreeEntry => {
+  const branch = getWorktreeBranchFromState(repoState)
+
+  return {
+    path: repository.path,
+    type: 'main',
+    branch,
+    head: '',
+    isDetached: branch === null,
+    isLocked: false,
+    isPrunable: repository.missing,
+  }
 }
 
 export function groupRepositories(
@@ -251,6 +414,10 @@ export function groupRepositories(
   const familyWorktreesByMainPath = new Map<
     string,
     ReadonlyArray<WorktreeEntry>
+  >()
+  const familyMainPathsByRepositoryIdentity = new Map<
+    string,
+    ReadonlyArray<string>
   >()
 
   for (const repo of repositories) {
@@ -274,25 +441,45 @@ export function groupRepositories(
         repo,
         localRepositoryStateLookup
       )
-      if (mainWorktreePath === null) {
+      const gitDirMainWorktreePath =
+        getWorktreeFamilyMainPathFromGitDir(repo)
+      if (
+        mainWorktreePath === null &&
+        gitDirMainWorktreePath === null
+      ) {
         continue
       }
 
-      familyMainPathByRepositoryId.set(repo.id, mainWorktreePath)
+      const familyMainWorktreePath =
+        mainWorktreePath ?? gitDirMainWorktreePath!
+      familyMainPathByRepositoryId.set(repo.id, familyMainWorktreePath)
 
       const worktrees = localRepositoryStateLookup.get(repo.id)?.worktrees ?? []
-      const existingWorktrees = familyWorktreesByMainPath.get(mainWorktreePath)
+      const worktreesForFamily =
+        mainWorktreePath === null &&
+        normalizePath(repo.path) !== familyMainWorktreePath
+          ? [buildSavedLinkedWorktreeEntry(
+              repo,
+              localRepositoryStateLookup.get(repo.id)
+            )]
+          : worktrees
+
+      const existingWorktrees =
+        familyWorktreesByMainPath.get(familyMainWorktreePath)
       if (existingWorktrees === undefined) {
-        familyWorktreesByMainPath.set(mainWorktreePath, worktrees)
+        familyWorktreesByMainPath.set(
+          familyMainWorktreePath,
+          worktreesForFamily
+        )
       } else {
         familyWorktreesByMainPath.set(
-          mainWorktreePath,
-          mergeWorktrees(existingWorktrees, worktrees)
+          familyMainWorktreePath,
+          mergeWorktrees(existingWorktrees, worktreesForFamily)
         )
       }
 
-      if (!familySourceByMainPath.has(mainWorktreePath)) {
-        familySourceByMainPath.set(mainWorktreePath, repo)
+      if (!familySourceByMainPath.has(familyMainWorktreePath)) {
+        familySourceByMainPath.set(familyMainWorktreePath, repo)
       }
 
       for (const worktree of worktrees) {
@@ -303,7 +490,7 @@ export function groupRepositories(
         if (savedWorktreeRepository !== undefined) {
           familyMainPathByRepositoryId.set(
             savedWorktreeRepository.id,
-            mainWorktreePath
+            familyMainWorktreePath
           )
         }
       }
@@ -315,8 +502,85 @@ export function groupRepositories(
         continue
       }
 
+      const familyWorktrees = familyWorktreesByMainPath.get(mainWorktreePath)
+      if (
+        familyWorktrees !== undefined &&
+        getMainWorktree(familyWorktrees) === null
+      ) {
+        familyWorktreesByMainPath.set(
+          mainWorktreePath,
+          mergeWorktrees(
+            [
+              buildSavedMainWorktreeEntry(
+                mainRepository,
+                localRepositoryStateLookup.get(mainRepository.id)
+              ),
+            ],
+            familyWorktrees
+          )
+        )
+      }
+
       familySourceByMainPath.set(mainWorktreePath, mainRepository)
       familyMainPathByRepositoryId.set(mainRepository.id, mainWorktreePath)
+    }
+
+    for (const [mainWorktreePath] of familyWorktreesByMainPath) {
+      const familySource =
+        repositoryByPath.get(mainWorktreePath) ??
+        familySourceByMainPath.get(mainWorktreePath)
+      if (familySource === undefined) {
+        continue
+      }
+
+      const repositoryIdentityKey = getRepositoryIdentityKey(familySource)
+      if (repositoryIdentityKey !== null) {
+        familyMainPathsByRepositoryIdentity.set(
+          repositoryIdentityKey,
+          [
+            ...(familyMainPathsByRepositoryIdentity.get(
+              repositoryIdentityKey
+            ) ?? []),
+            mainWorktreePath,
+          ]
+        )
+      }
+    }
+
+    for (const repo of repositories) {
+      if (
+        !(repo instanceof Repository) ||
+        !repo.missing ||
+        familyMainPathByRepositoryId.has(repo.id)
+      ) {
+        continue
+      }
+
+      const repositoryIdentityKey = getRepositoryIdentityKey(repo)
+      const familyMainPath =
+        repositoryIdentityKey !== null
+          ? chooseFamilyMainPathForMissingRepository(
+              repo,
+              familyMainPathsByRepositoryIdentity.get(repositoryIdentityKey)
+            )
+          : undefined
+      if (
+        familyMainPath === undefined ||
+        normalizePath(repo.path) === familyMainPath
+      ) {
+        continue
+      }
+
+      const repoState = localRepositoryStateLookup.get(repo.id)
+      const existingWorktrees = familyWorktreesByMainPath.get(familyMainPath)
+      familyWorktreesByMainPath.set(
+        familyMainPath,
+        mergeWorktrees(
+          existingWorktrees ?? [],
+          [buildSavedLinkedWorktreeEntry(repo, repoState)]
+        )
+      )
+      familyMainPathByRepositoryId.set(repo.id, familyMainPath)
     }
   }
 
