@@ -87,8 +87,8 @@ export class RepositoryListItem extends React.Component<
   private readonly listItemRef = createObservableRef<HTMLDivElement>()
 
   public render() {
-    const { isNestedWorktree, worktree } = this.props
-    return isNestedWorktree && worktree !== null && worktree.type === 'linked'
+    const { worktree } = this.props
+    return worktree !== null && worktree.type === 'linked'
       ? this.renderWorktree(worktree)
       : this.renderRepository()
   }
@@ -154,7 +154,13 @@ export class RepositoryListItem extends React.Component<
   private renderWorktree(worktree: WorktreeEntry) {
     return (
       <div
-        className="repository-list-item repository-worktree-item"
+        className={classNames(
+          'repository-list-item',
+          'repository-worktree-item',
+          {
+            'nested-worktree-item': this.props.isNestedWorktree,
+          }
+        )}
         ref={this.listItemRef}
       >
         <Tooltip

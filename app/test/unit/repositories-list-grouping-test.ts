@@ -549,7 +549,62 @@ describe('repository list grouping', () => {
     assert.equal(foldedItem?.sourceRepository?.path, secondMainPath)
   })
 
-  it('does not infer worktree families from non-missing git dir paths', () => {
+  it('nests a saved linked worktree by its git dir before it is marked missing', () => {
+    const mainPath = '/tmp/projects/project-alpha'
+    const linkedPath = '/tmp/projects/worktrees/project-alpha-feature-a'
+    const mainRepo = new Repository(
+      mainPath,
+      1,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git')
+    )
+    const linkedRepo = new Repository(
+      linkedPath,
+      2,
+      null,
+      false,
+      null,
+      null,
+      null,
+      {},
+      null,
+      false,
+      null,
+      Path.join(mainPath, '.git', 'worktrees', 'project-alpha-feature-a')
+    )
+    const worktreeCache = new Map<number, ILocalRepositoryState>([
+      [
+        mainRepo.id,
+        buildLocalState([buildWorktree(mainPath, 'main', 'refs/heads/main')]),
+      ],
+    ])
+
+    const grouped = groupRepositories([linkedRepo, mainRepo], worktreeCache, [])
+
+    assert.equal(grouped.length, 1)
+    assert.deepEqual(
+      grouped[0].items.map(item => item.repository.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.worktree?.path),
+      [mainPath, linkedPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isNestedWorktree),
+      [false, true]
+    )
+  })
+
+  it('does not infer worktree families from unrelated git dir paths', () => {
     const repo = new Repository(
       '/tmp/projects/project-beta',
       1,
@@ -1157,6 +1212,7 @@ describe('repository list grouping', () => {
       grouped[0].items.map(item => item.worktree?.path),
       [linkedPath]
     )
+    assert.equal(grouped[0].items[0].isNestedWorktree, false)
   })
 
   it('shows the selected linked worktree in Recent when only the main worktree state is loaded', () => {
@@ -1187,6 +1243,7 @@ describe('repository list grouping', () => {
       grouped[0].items.map(item => item.worktree?.path),
       [linkedPath]
     )
+    assert.equal(grouped[0].items[0].isNestedWorktree, false)
   })
 
   it('shows recent worktree paths separately when they share a repository id', () => {
@@ -1220,6 +1277,10 @@ describe('repository list grouping', () => {
     assert.deepEqual(
       grouped[0].items.map(item => item.worktree?.path),
       [featureAPath, featureBPath]
+    )
+    assert.deepEqual(
+      grouped[0].items.map(item => item.isNestedWorktree),
+      [false, false]
     )
   })
 })

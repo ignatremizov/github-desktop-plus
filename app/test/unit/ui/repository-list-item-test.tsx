@@ -173,6 +173,43 @@ describe('RepositoryListItem', () => {
     assert.equal(pathDisambiguation?.textContent, '/tmp/worktree-path')
   })
 
+  it('renders a recent linked worktree without nested indentation', () => {
+    const repository = createRepository()
+    const worktree: WorktreeEntry = {
+      path: '/tmp/project-feature-a',
+      type: 'linked',
+      branch: 'refs/heads/feature/feature-a',
+      head: 'deadbeef',
+      isDetached: false,
+      isLocked: false,
+      isPrunable: false,
+    }
+    const view = render(
+      <RepositoryListItem
+        repository={repository}
+        title="project-feature-a"
+        needsDisambiguation={false}
+        matches={noMatches}
+        aheadBehind={null}
+        changedFilesCount={0}
+        branchName="feature/feature-a"
+        worktreePathDisambiguation={null}
+        isNestedWorktree={false}
+        isPrunableWorktree={false}
+        worktree={worktree}
+      />
+    )
+
+    const row = view.container.querySelector('.repository-list-item')
+
+    assert.equal(row?.classList.contains('repository-worktree-item'), true)
+    assert.equal(row?.classList.contains('nested-worktree-item'), false)
+    assert.equal(
+      view.container.querySelector('.icon-for-repository') !== null,
+      true
+    )
+  })
+
   it('highlights matched text in the branch badge', () => {
     const repository = createRepository()
     const view = render(

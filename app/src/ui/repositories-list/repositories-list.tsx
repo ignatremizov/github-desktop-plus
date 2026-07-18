@@ -42,10 +42,7 @@ import {
 } from '../repositories-list/repository-list-item-context-menu'
 import { openRepositoryInNewWindow } from '../main-process-proxy'
 import { enableWorktreeSupport } from '../../lib/feature-flag'
-import {
-  getFilteredItems,
-  SectionFilterList,
-} from '../lib/section-filter-list'
+import { getFilteredItems, SectionFilterList } from '../lib/section-filter-list'
 import { assertNever } from '../../lib/fatal-error'
 import { IAheadBehind } from '../../models/branch'
 import { ShowBranchNameInRepoListSetting } from '../../models/show-branch-name-in-repo-list'
@@ -218,10 +215,7 @@ export const getRepositoryListFilterText = (
   const matchingPathText = hasExactPathFilterMatch(item, filterQuery)
     ? item.pathText
     : []
-  const searchableSubtitleText = [
-    ...matchingSubtitleText,
-    ...matchingPathText,
-  ]
+  const searchableSubtitleText = [...matchingSubtitleText, ...matchingPathText]
 
   return searchableSubtitleText.length > 0
     ? [title, searchableSubtitleText.join(' ')]
@@ -291,10 +285,7 @@ const getContiguousMatchRank = (
     }
 
     const rank = { textIndex, characterIndex }
-    if (
-      bestRank === null ||
-      compareContiguousMatchRank(rank, bestRank) < 0
-    ) {
+    if (bestRank === null || compareContiguousMatchRank(rank, bestRank) < 0) {
       bestRank = rank
     }
   })
@@ -352,12 +343,7 @@ const sortRepositoryListMatches = (
 
   const filterQuery = getRepositoryListFilterQuery(normalizedFilterText)
   return [...items].sort((x, y) =>
-    compareRepositoryListMatches(
-      filterQuery,
-      x,
-      y,
-      showBranchNameInRepoList
-    )
+    compareRepositoryListMatches(filterQuery, x, y, showBranchNameInRepoList)
   )
 }
 
@@ -472,9 +458,7 @@ export function sortRepositoryListGroupsForFilter(
   >,
   filterText: string,
   showBranchNameInRepoList: ShowBranchNameInRepoListSetting
-): ReadonlyArray<
-  IFilterListGroup<IRepositoryListItem, RepositoryListGroup>
-> {
+): ReadonlyArray<IFilterListGroup<IRepositoryListItem, RepositoryListGroup>> {
   const normalizedFilterText = normalizeFilterText(filterText)
   if (normalizedFilterText.length === 0) {
     return groups
@@ -553,8 +537,7 @@ export function getWorktreeFamilyMainPath(
     return normalizePath(directMainWorktree.path)
   }
 
-  const gitDirMainWorktreePath =
-    getWorktreeFamilyMainPathFromGitDir(repository)
+  const gitDirMainWorktreePath = getWorktreeFamilyMainPathFromGitDir(repository)
   if (gitDirMainWorktreePath !== null) {
     return gitDirMainWorktreePath
   }
@@ -1082,7 +1065,6 @@ export class RepositoriesList extends React.Component<
     if (
       item.worktree !== null &&
       item.worktree.type === 'linked' &&
-      item.isNestedWorktree &&
       item.repository instanceof Repository
     ) {
       showContextualMenu(
