@@ -27,6 +27,11 @@ interface IDiffOptionsProps {
   readonly wrapDiffLines: boolean
   readonly onWrapDiffLinesChanged: (wrapDiffLines: boolean) => void
 
+  readonly enhancedDiffHighlighting: boolean
+  readonly onEnhancedDiffHighlightingChanged: (
+    enhancedDiffHighlighting: boolean
+  ) => void
+
   /** Called when the user opens the diff options popover */
   readonly onDiffOptionsOpened: () => void
 }
@@ -99,6 +104,14 @@ export class DiffOptions extends React.Component<
     return this.props.onWrapDiffLinesChanged(event.currentTarget.checked)
   }
 
+  private onEnhancedDiffHighlightingChanged = (
+    event: React.FormEvent<HTMLInputElement>
+  ) => {
+    return this.props.onEnhancedDiffHighlightingChanged(
+      event.currentTarget.checked
+    )
+  }
+
   public render() {
     const buttonLabel = `Diff ${__DARWIN__ ? 'Settings' : 'Options'}`
     return (
@@ -140,6 +153,7 @@ export class DiffOptions extends React.Component<
         <h3 id="diff-options-popover-header">{header}</h3>
         {this.renderHideWhitespaceChanges()}
         {this.renderShowSideBySide()}
+        {this.renderEnhancedDiffHighlighting()}
         {this.renderWrapDiffLines()}
         {this.renderShowDiffMinimap()}
       </Popover>
@@ -228,6 +242,30 @@ export class DiffOptions extends React.Component<
           onChange={this.onWrapDiffLinesChanged}
           label={__DARWIN__ ? 'Wrap Lines' : 'Wrap lines'}
         />
+      </fieldset>
+    )
+  }
+
+  private renderEnhancedDiffHighlighting() {
+    return (
+      <fieldset>
+        <legend>Highlighting</legend>
+        <Checkbox
+          value={
+            this.props.enhancedDiffHighlighting
+              ? CheckboxValue.On
+              : CheckboxValue.Off
+          }
+          onChange={this.onEnhancedDiffHighlightingChanged}
+          label={
+            __DARWIN__
+              ? 'Enhanced Diff Highlighting'
+              : 'Enhanced diff highlighting'
+          }
+        />
+        <p className="secondary-text">
+          Align related changed lines and highlight changed content within them.
+        </p>
       </fieldset>
     )
   }

@@ -407,14 +407,17 @@ import {
   StashChangesError,
 } from '../error-with-metadata'
 import {
+  EnhancedDiffHighlightingDefault,
   ShowDiffMinimapDefault,
   ShowSideBySideDiffDefault,
   WrapDiffLinesDefault,
+  getEnhancedDiffHighlighting,
   getShowDiffMinimap,
   getShowSideBySideDiff,
   getWrapDiffLines,
   setShowDiffMinimap,
   setShowSideBySideDiff,
+  setEnhancedDiffHighlighting,
   setWrapDiffLines,
 } from '../../ui/lib/diff-mode'
 import {
@@ -809,6 +812,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
   private showSideBySideDiff: boolean = ShowSideBySideDiffDefault
   private showDiffMinimap: boolean = ShowDiffMinimapDefault
   private wrapDiffLines: boolean = WrapDiffLinesDefault
+  private enhancedDiffHighlighting: boolean = EnhancedDiffHighlightingDefault
 
   private uncommittedChangesStrategy = defaultUncommittedChangesStrategy
 
@@ -1545,6 +1549,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       showSideBySideDiff: this.showSideBySideDiff,
       showDiffMinimap: this.showDiffMinimap,
       wrapDiffLines: this.wrapDiffLines,
+      enhancedDiffHighlighting: this.enhancedDiffHighlighting,
       selectedShell: this.selectedShell,
       repositoryFilterText: this.repositoryFilterText,
       resolvedExternalEditor: this.resolvedExternalEditor,
@@ -3249,6 +3254,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
     this.showSideBySideDiff = getShowSideBySideDiff()
     this.showDiffMinimap = getShowDiffMinimap()
     this.wrapDiffLines = getWrapDiffLines()
+    this.enhancedDiffHighlighting = getEnhancedDiffHighlighting()
 
     this.selectedTheme = getPersistedThemeName()
     // Make sure the persisted theme is applied
@@ -9316,6 +9322,14 @@ export class AppStore extends TypedBaseStore<IAppState> {
     if (wrapDiffLines !== this.wrapDiffLines) {
       setWrapDiffLines(wrapDiffLines)
       this.wrapDiffLines = wrapDiffLines
+      this.emitUpdate()
+    }
+  }
+
+  public _setEnhancedDiffHighlighting(enhancedDiffHighlighting: boolean) {
+    if (enhancedDiffHighlighting !== this.enhancedDiffHighlighting) {
+      setEnhancedDiffHighlighting(enhancedDiffHighlighting)
+      this.enhancedDiffHighlighting = enhancedDiffHighlighting
       this.emitUpdate()
     }
   }

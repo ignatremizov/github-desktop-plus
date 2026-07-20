@@ -94,6 +94,11 @@ interface ISeamlessDiffSwitcherProps {
   // eslint-disable-next-line react/no-unused-prop-types
   readonly wrapDiffLines: boolean
 
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  // Used in getDerivedStateFromProps, no-unused-prop-types doesn't know that
+  // eslint-disable-next-line react/no-unused-prop-types
+  readonly enhancedDiffHighlighting: boolean
+
   /** Whether contextual gaps should be expanded to show the whole file. */
   readonly showWholeFile?: boolean
 
@@ -424,6 +429,7 @@ export class SeamlessDiffSwitcher extends React.Component<
       showSideBySideDiff,
       showDiffMinimap,
       wrapDiffLines,
+      enhancedDiffHighlighting,
       showDiffCheckMarks,
       onIncludeChanged,
       onDiscardChanges,
@@ -460,6 +466,7 @@ export class SeamlessDiffSwitcher extends React.Component<
             showSideBySideDiff={showSideBySideDiff}
             showDiffMinimap={showDiffMinimap}
             wrapDiffLines={wrapDiffLines}
+            enhancedDiffHighlighting={enhancedDiffHighlighting}
             showWholeFile={this.props.showWholeFile}
             onShowWholeFileChanged={this.props.onShowWholeFileChanged}
             askForConfirmationOnDiscardChanges={

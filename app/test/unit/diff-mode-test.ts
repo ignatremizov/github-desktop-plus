@@ -2,10 +2,13 @@ import assert from 'node:assert'
 import { afterEach, describe, it } from 'node:test'
 
 import {
+  EnhancedDiffHighlightingDefault,
+  getEnhancedDiffHighlighting,
   getDiffHorizontalScrollDelta,
   getWrapDiffLines,
   isMarkdownFile,
   setWrapDiffLines,
+  setEnhancedDiffHighlighting,
   WrapDiffLinesDefault,
 } from '../../src/ui/lib/diff-mode'
 
@@ -20,6 +23,18 @@ describe('diff presentation mode', () => {
     setWrapDiffLines(false)
 
     assert.strictEqual(getWrapDiffLines(), false)
+  })
+
+  it('keeps enhanced diff highlighting opt-in and persists changes', () => {
+    assert.strictEqual(
+      getEnhancedDiffHighlighting(),
+      EnhancedDiffHighlightingDefault
+    )
+    assert.strictEqual(EnhancedDiffHighlightingDefault, false)
+
+    setEnhancedDiffHighlighting(true)
+
+    assert.strictEqual(getEnhancedDiffHighlighting(), true)
   })
 
   it('recognizes Markdown file extensions case-insensitively', () => {

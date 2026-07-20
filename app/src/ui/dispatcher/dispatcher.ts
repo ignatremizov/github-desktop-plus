@@ -2755,6 +2755,11 @@ export class Dispatcher {
     return this.appStore._setWrapDiffLines(wrapDiffLines)
   }
 
+  /** Change semantic line alignment and intraline highlighting. */
+  public onEnhancedDiffHighlightingChanged(enhancedDiffHighlighting: boolean) {
+    return this.appStore._setEnhancedDiffHighlighting(enhancedDiffHighlighting)
+  }
+
   /** Install the global Git LFS filters. */
   public installGlobalLFSFilters(force: boolean): Promise<void> {
     return this.appStore._installGlobalLFSFilters(force)

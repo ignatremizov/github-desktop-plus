@@ -79,6 +79,9 @@ interface IDiffProps {
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
 
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
+
   /** Whether contextual gaps should be expanded to show the whole file. */
   readonly showWholeFile?: boolean
 
@@ -335,6 +338,7 @@ export class Diff extends React.Component<IDiffProps, IDiffState> {
         showSideBySideDiff={this.props.showSideBySideDiff}
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
         showWholeFile={this.props.showWholeFile}
         onShowWholeFileChanged={this.props.onShowWholeFileChanged}
         onIncludeChanged={this.props.onIncludeChanged}

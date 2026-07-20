@@ -80,6 +80,9 @@ export interface IMultiCommitOperationProps {
 
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
+
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
 }
 
 /** A base component for the shared logic of multi commit operations. */
@@ -372,6 +375,7 @@ export abstract class BaseMultiCommitOperation extends React.Component<IMultiCom
             onDismissed={this.onConflictsDialogDismissed}
             emoji={this.props.emoji}
             wrapDiffLines={this.props.wrapDiffLines}
+            enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           />
         )
       default:

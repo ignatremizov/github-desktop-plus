@@ -30,6 +30,12 @@ interface IDiffHeaderProps {
   /** Called when the user changes the diff line wrapping setting. */
   readonly onWrapDiffLinesChanged: (checked: boolean) => void
 
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
+
+  /** Called when enhanced diff highlighting changes. */
+  readonly onEnhancedDiffHighlightingChanged: (checked: boolean) => void
+
   /** Whether the current diff can be expanded to show the whole file. */
   readonly canExpandWholeFile: boolean
 
@@ -104,6 +110,10 @@ export class DiffHeader extends React.Component<IDiffHeaderProps, {}> {
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
         onWrapDiffLinesChanged={this.props.onWrapDiffLinesChanged}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
+        onEnhancedDiffHighlightingChanged={
+          this.props.onEnhancedDiffHighlightingChanged
+        }
         onDiffOptionsOpened={this.props.onDiffOptionsOpened}
       />
     )

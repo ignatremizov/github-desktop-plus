@@ -49,6 +49,14 @@ export abstract class DiffPresentationStateComponent<
     return this.getDispatcher().onWrapDiffLinesChanged(wrapDiffLines)
   }
 
+  protected onEnhancedDiffHighlightingChanged = (
+    enhancedDiffHighlighting: boolean
+  ) => {
+    return this.getDispatcher().onEnhancedDiffHighlightingChanged(
+      enhancedDiffHighlighting
+    )
+  }
+
   protected onShowWholeFileChanged = (showWholeFile: boolean) => {
     // Persist the preference globally so changes/history stay in sync, while
     // each active diff still decides whether whole-file mode can be applied.

@@ -4,7 +4,6 @@ import {
   ITextDiff,
   DiffLineType,
   DiffHunk,
-  DiffLine,
   DiffSelection,
   DiffHunkExpansionType,
   DiffSelectionType,
@@ -15,11 +14,7 @@ import {
   IFileContents,
 } from './syntax-highlighting'
 import { ITokens, ILineTokens, IToken } from '../../lib/highlighter/types'
-import {
-  assertNever,
-  assertNonNullable,
-  forceUnwrap,
-} from '../../lib/fatal-error'
+import { assertNever, assertNonNullable } from '../../lib/fatal-error'
 import classNames from 'classnames'
 import {
   List,
@@ -46,22 +41,17 @@ import {
   DiffRow,
   DiffRowType,
   canSelect,
-  getDiffTokens,
   SimplifiedDiffRowData,
   SimplifiedDiffRow,
   IDiffRowData,
   DiffColumn,
   getLineWidthFromDigitCount,
   getNumberOfDigits,
-  MaxIntraLineDiffStringLength,
   getFirstAndLastClassesSideBySide,
   textDiffEquals,
   isRowChanged,
 } from './diff-helpers'
-import {
-  getDiffHorizontalScrollDelta,
-  isMarkdownFile,
-} from '../lib/diff-mode'
+import { getDiffHorizontalScrollDelta, isMarkdownFile } from '../lib/diff-mode'
 import { showContextualMenu } from '../../lib/menu-item'
 import { getTokens } from './get-tokens'
 import { DiffSearchInput } from './diff-search-input'
@@ -78,6 +68,7 @@ import ReactDOM from 'react-dom'
 import { AriaLiveContainer } from '../accessibility/aria-live-container'
 import { DiffMinimap } from './diff-minimap'
 import { getNumber, setNumber } from '../../lib/local-storage'
+import { getModifiedRows, IModifiedDiffLine } from './modified-diff-rows'
 
 const DefaultRowHeight = 20
 
@@ -97,8 +88,6 @@ export interface ISelection {
 }
 
 type SearchDirection = 'next' | 'previous'
-
-type ModifiedLine = { line: DiffLine; diffLineNumber: number }
 
 const isElement = (n: Node): n is Element => n.nodeType === Node.ELEMENT_NODE
 const closestElement = (n: Node): Element | null =>
@@ -161,6 +150,9 @@ interface ISideBySideDiffProps {
 
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
+
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
 
   /** Whether contextual gaps should be expanded to show the whole file. */
   readonly showWholeFile?: boolean
@@ -871,11 +863,23 @@ export class SideBySideDiff extends React.Component<
 
   private getCurrentDiffRows() {
     const { diff } = this.state
+    const markdownFile = isMarkdownFile(this.props.file.path)
+    const useSemanticReadOnlyOrder =
+      !canSelect(this.props.file) && this.props.showSideBySideDiff
+    const groupSplitReplacementBlocks =
+      useSemanticReadOnlyOrder &&
+      this.props.showSideBySideDiff &&
+      !this.state.isSearching
 
     return getDiffRows(
       diff,
       this.props.showSideBySideDiff,
-      this.canExpandDiff()
+      this.canExpandDiff(),
+      useSemanticReadOnlyOrder,
+      groupSplitReplacementBlocks,
+      !markdownFile,
+      this.props.enhancedDiffHighlighting,
+      markdownFile
     )
   }
 
@@ -1059,12 +1063,7 @@ export class SideBySideDiff extends React.Component<
     rowIndex: number
   ): IRowSelectableGroup | null {
     const { diff, hoveredHunk } = this.state
-
-    const rows = getDiffRows(
-      diff,
-      this.props.showSideBySideDiff,
-      this.canExpandDiff()
-    )
+    const rows = this.getCurrentDiffRows()
     const row = rows[rowIndex]
 
     if (row === undefined || !isRowChanged(row)) {
@@ -1224,11 +1223,7 @@ export class SideBySideDiff extends React.Component<
 
   private renderRow = ({ index, parent, style, key }: ListRowProps) => {
     const { diff } = this.state
-    const rows = getDiffRows(
-      diff,
-      this.props.showSideBySideDiff,
-      this.canExpandDiff()
-    )
+    const rows = this.getCurrentDiffRows()
 
     const row = rows[index]
     if (row === undefined) {
@@ -1478,6 +1473,23 @@ export class SideBySideDiff extends React.Component<
     }
 
     if (row.type === DiffRowType.Modified) {
+      const beforeBlockData = row.beforeBlockData?.map(data =>
+        this.getRowDataPopulated(
+          data,
+          numRow,
+          DiffColumn.Before,
+          this.state.beforeTokens
+        )
+      )
+      const afterBlockData = row.afterBlockData?.map(data =>
+        this.getRowDataPopulated(
+          data,
+          numRow,
+          DiffColumn.After,
+          this.state.afterTokens
+        )
+      )
+
       return {
         ...row,
         beforeData: this.getRowDataPopulated(
@@ -1492,6 +1504,8 @@ export class SideBySideDiff extends React.Component<
           DiffColumn.After,
           this.state.afterTokens
         ),
+        beforeBlockData,
+        afterBlockData,
       }
     }
 
@@ -1588,12 +1602,7 @@ export class SideBySideDiff extends React.Component<
     rowNumber: number,
     column: DiffColumn
   ): number | null {
-    const { diff } = this.state
-    const rows = getDiffRows(
-      diff,
-      this.props.showSideBySideDiff,
-      this.canExpandDiff()
-    )
+    const rows = this.getCurrentDiffRows()
     const row = rows[rowNumber]
 
     if (row === undefined) {
@@ -2086,11 +2095,16 @@ export class SideBySideDiff extends React.Component<
   }
 
   private startSearch = (searchQuery: string, direction: SearchDirection) => {
+    const markdownFile = isMarkdownFile(this.props.file.path)
     const searchResults = calcSearchTokens(
       this.state.diff,
       this.props.showSideBySideDiff,
       searchQuery,
-      this.canExpandDiff()
+      this.canExpandDiff(),
+      !canSelect(this.props.file) && this.props.showSideBySideDiff,
+      !markdownFile,
+      this.props.enhancedDiffHighlighting,
+      markdownFile
     )
 
     if (searchResults === undefined || searchResults.length === 0) {
@@ -2204,7 +2218,9 @@ function highlightParametersEqual(
   return (
     (newProps === prevProps ||
       (newProps.file.id === prevProps.file.id &&
-        newProps.showSideBySideDiff === prevProps.showSideBySideDiff)) &&
+        newProps.showSideBySideDiff === prevProps.showSideBySideDiff &&
+        newProps.enhancedDiffHighlighting ===
+          prevProps.enhancedDiffHighlighting)) &&
     newState.diff.text === prevState.diff.text &&
     prevProps.fileContents?.file.id === newProps.fileContents?.file.id
   )
@@ -2220,7 +2236,12 @@ function highlightParametersEqual(
 const getDiffRows = memoize(function (
   diff: ITextDiff,
   showSideBySideDiff: boolean,
-  enableDiffExpansion: boolean
+  enableDiffExpansion: boolean,
+  useSemanticReadOnlyOrder: boolean,
+  groupSplitReplacementBlocks: boolean,
+  highlightOneSidedDeclarations: boolean,
+  enhancedDiffHighlighting: boolean,
+  preferProsePunctuation: boolean
 ): ReadonlyArray<SimplifiedDiffRow> {
   const outputRows = new Array<SimplifiedDiffRow>()
 
@@ -2229,7 +2250,12 @@ const getDiffRows = memoize(function (
       index,
       hunk,
       showSideBySideDiff,
-      enableDiffExpansion
+      enableDiffExpansion,
+      useSemanticReadOnlyOrder,
+      groupSplitReplacementBlocks,
+      highlightOneSidedDeclarations,
+      enhancedDiffHighlighting,
+      preferProsePunctuation
     )) {
       outputRows.push(row)
     }
@@ -2253,7 +2279,12 @@ function getDiffRowsFromHunk(
   hunkIndex: number,
   hunk: DiffHunk,
   showSideBySideDiff: boolean,
-  enableDiffExpansion: boolean
+  enableDiffExpansion: boolean,
+  useSemanticReadOnlyOrder: boolean,
+  groupSplitReplacementBlocks: boolean,
+  highlightOneSidedDeclarations: boolean,
+  enhancedDiffHighlighting: boolean,
+  preferProsePunctuation: boolean
 ): ReadonlyArray<SimplifiedDiffRow> {
   const rows = new Array<SimplifiedDiffRow>()
 
@@ -2261,12 +2292,17 @@ function getDiffRowsFromHunk(
    * Array containing multiple consecutive added/deleted lines. This
    * is used to be able to merge them into modified rows.
    */
-  let modifiedLines = new Array<ModifiedLine>()
+  let modifiedLines = new Array<IModifiedDiffLine>()
+  let modifiedLinesHaveContextBefore = false
 
   for (const [num, line] of hunk.lines.entries()) {
     const diffLineNumber = hunk.unifiedDiffStart + num
 
     if (line.type === DiffLineType.Delete || line.type === DiffLineType.Add) {
+      if (modifiedLines.length === 0) {
+        modifiedLinesHaveContextBefore =
+          num > 0 && hunk.lines[num - 1].type === DiffLineType.Context
+      }
       modifiedLines.push({ line, diffLineNumber })
       continue
     }
@@ -2274,10 +2310,21 @@ function getDiffRowsFromHunk(
     if (modifiedLines.length > 0) {
       // If the current line is not added/deleted and we have any added/deleted
       // line stored, we need to process them.
-      for (const row of getModifiedRows(modifiedLines, showSideBySideDiff)) {
+      for (const row of getModifiedRows(
+        modifiedLines,
+        showSideBySideDiff,
+        useSemanticReadOnlyOrder,
+        groupSplitReplacementBlocks,
+        modifiedLinesHaveContextBefore,
+        line.type === DiffLineType.Context,
+        highlightOneSidedDeclarations,
+        enhancedDiffHighlighting,
+        preferProsePunctuation
+      )) {
         rows.push(row)
       }
       modifiedLines = []
+      modifiedLinesHaveContextBefore = false
     }
 
     if (line.type === DiffLineType.Hunk) {
@@ -2318,143 +2365,22 @@ function getDiffRowsFromHunk(
 
   // Do one more pass to process the remaining list of modified lines.
   if (modifiedLines.length > 0) {
-    for (const row of getModifiedRows(modifiedLines, showSideBySideDiff)) {
+    for (const row of getModifiedRows(
+      modifiedLines,
+      showSideBySideDiff,
+      useSemanticReadOnlyOrder,
+      groupSplitReplacementBlocks,
+      modifiedLinesHaveContextBefore,
+      false,
+      highlightOneSidedDeclarations,
+      enhancedDiffHighlighting,
+      preferProsePunctuation
+    )) {
       rows.push(row)
     }
   }
 
   return rows
-}
-
-function getModifiedRows(
-  addedOrDeletedLines: ReadonlyArray<ModifiedLine>,
-  showSideBySideDiff: boolean
-): ReadonlyArray<SimplifiedDiffRow> {
-  if (addedOrDeletedLines.length === 0) {
-    return []
-  }
-  const hunkStartLine = addedOrDeletedLines[0].diffLineNumber
-  const addedLines = new Array<ModifiedLine>()
-  const deletedLines = new Array<ModifiedLine>()
-
-  for (const line of addedOrDeletedLines) {
-    if (line.line.type === DiffLineType.Add) {
-      addedLines.push(line)
-    } else if (line.line.type === DiffLineType.Delete) {
-      deletedLines.push(line)
-    }
-  }
-
-  const output = new Array<SimplifiedDiffRow>()
-
-  const diffTokensBefore = new Array<ILineTokens | undefined>()
-  const diffTokensAfter = new Array<ILineTokens | undefined>()
-
-  // To match the behavior of github.com, we only highlight differences between
-  // lines on hunks that have the same number of added and deleted lines.
-  const shouldDisplayDiffInChunk = addedLines.length === deletedLines.length
-
-  if (shouldDisplayDiffInChunk) {
-    for (let i = 0; i < deletedLines.length; i++) {
-      const addedLine = addedLines[i]
-      const deletedLine = deletedLines[i]
-
-      if (
-        addedLine.line.content.length < MaxIntraLineDiffStringLength &&
-        deletedLine.line.content.length < MaxIntraLineDiffStringLength
-      ) {
-        const { before, after } = getDiffTokens(
-          deletedLine.line.content,
-          addedLine.line.content
-        )
-        diffTokensBefore[i] = before
-        diffTokensAfter[i] = after
-      }
-    }
-  }
-
-  let indexModifiedRow = 0
-
-  while (
-    showSideBySideDiff &&
-    indexModifiedRow < addedLines.length &&
-    indexModifiedRow < deletedLines.length
-  ) {
-    const addedLine = forceUnwrap(
-      'Unexpected null line',
-      addedLines[indexModifiedRow]
-    )
-    const deletedLine = forceUnwrap(
-      'Unexpected null line',
-      deletedLines[indexModifiedRow]
-    )
-
-    // Modified lines
-    output.push({
-      type: DiffRowType.Modified,
-      beforeData: getDataFromLine(
-        deletedLine,
-        'oldLineNumber',
-        diffTokensBefore.shift()
-      ),
-      afterData: getDataFromLine(
-        addedLine,
-        'newLineNumber',
-        diffTokensAfter.shift()
-      ),
-      hunkStartLine,
-    })
-
-    indexModifiedRow++
-  }
-
-  for (let i = indexModifiedRow; i < deletedLines.length; i++) {
-    const line = forceUnwrap('Unexpected null line', deletedLines[i])
-
-    output.push({
-      type: DiffRowType.Deleted,
-      data: getDataFromLine(line, 'oldLineNumber', diffTokensBefore.shift()),
-      hunkStartLine,
-    })
-  }
-
-  for (let i = indexModifiedRow; i < addedLines.length; i++) {
-    const line = forceUnwrap('Unexpected null line', addedLines[i])
-
-    // Added line
-    output.push({
-      type: DiffRowType.Added,
-      data: getDataFromLine(line, 'newLineNumber', diffTokensAfter.shift()),
-      hunkStartLine,
-    })
-  }
-
-  return output
-}
-
-function getDataFromLine(
-  { line, diffLineNumber }: { line: DiffLine; diffLineNumber: number },
-  lineToUse: 'oldLineNumber' | 'newLineNumber',
-  diffTokens: ILineTokens | undefined
-): SimplifiedDiffRowData {
-  const lineNumber = forceUnwrap(
-    `Expecting ${lineToUse} value for ${line}`,
-    line[lineToUse]
-  )
-
-  const tokens = new Array<ILineTokens>()
-
-  if (diffTokens !== undefined) {
-    tokens.push(diffTokens)
-  }
-
-  return {
-    content: line.content,
-    lineNumber,
-    diffLineNumber: line.originalLineNumber,
-    noNewLineIndicator: line.noTrailingNewLine,
-    tokens,
-  }
 }
 
 /**
@@ -2504,7 +2430,11 @@ function calcSearchTokens(
   diff: ITextDiff,
   showSideBySideDiffs: boolean,
   searchQuery: string,
-  enableDiffExpansion: boolean
+  enableDiffExpansion: boolean,
+  useSemanticReadOnlyOrder: boolean,
+  highlightOneSidedDeclarations: boolean,
+  enhancedDiffHighlighting: boolean,
+  preferProsePunctuation: boolean
 ): SearchResults | undefined {
   if (searchQuery.length === 0) {
     return undefined
@@ -2512,7 +2442,16 @@ function calcSearchTokens(
 
   const hits = new SearchResults()
   const searchRe = new RegExp(escapeRegExp(searchQuery), 'gi')
-  const rows = getDiffRows(diff, showSideBySideDiffs, enableDiffExpansion)
+  const rows = getDiffRows(
+    diff,
+    showSideBySideDiffs,
+    enableDiffExpansion,
+    useSemanticReadOnlyOrder,
+    false,
+    highlightOneSidedDeclarations,
+    enhancedDiffHighlighting,
+    preferProsePunctuation
+  )
 
   for (const [rowNumber, row] of rows.entries()) {
     if (row.type === DiffRowType.Hunk) {

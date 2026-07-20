@@ -69,6 +69,7 @@ interface ICopilotConflictsDialogProps {
   readonly onDismissed: () => void
   readonly emoji: Map<string, Emoji>
   readonly wrapDiffLines: boolean
+  readonly enhancedDiffHighlighting: boolean
 }
 
 enum CopilotConflictsTab {
@@ -648,6 +649,7 @@ export class CopilotConflictsDialog extends React.Component<
             theirBranch={this.props.conflictState.theirBranch}
             onResolutionDropdownClick={this.onResolutionDropdownClick}
             wrapDiffLines={this.props.wrapDiffLines}
+            enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           />
         )
       }

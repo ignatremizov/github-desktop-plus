@@ -81,6 +81,42 @@ function createModifiedRow(): SideBySideDiffRowProps['row'] {
   }
 }
 
+function createModifiedBlockRow(): SideBySideDiffRowProps['row'] {
+  const beforeBlockData = [
+    createDiffRowData({
+      content: 'First source line',
+      lineNumber: 10,
+      diffLineNumber: 1,
+    }),
+    createDiffRowData({
+      content: 'Second source line',
+      lineNumber: 11,
+      diffLineNumber: 2,
+    }),
+    createDiffRowData({
+      content: 'Third source line',
+      lineNumber: 12,
+      diffLineNumber: 3,
+    }),
+  ]
+  const afterBlockData = [
+    createDiffRowData({
+      content: 'One destination line',
+      lineNumber: 20,
+      diffLineNumber: 4,
+    }),
+  ]
+
+  return {
+    type: DiffRowType.Modified,
+    hunkStartLine: 7,
+    beforeData: beforeBlockData[0],
+    afterData: afterBlockData[0],
+    beforeBlockData,
+    afterBlockData,
+  }
+}
+
 function createSelectableGroup(
   selectionState: DiffSelectionType = DiffSelectionType.None
 ): NonNullable<SideBySideDiffRowProps['rowSelectableGroup']> {
@@ -240,6 +276,49 @@ describe('SideBySideDiffRow', () => {
       { row: 0, column: DiffColumn.Before, select: true },
       { row: 0, column: DiffColumn.After, select: false },
     ])
+  })
+
+  it('renders uneven read-only replacements as one measured block row', () => {
+    renderSideBySideDiffRow({
+      row: createModifiedBlockRow(),
+      isDiffSelectable: false,
+      showSideBySideDiff: true,
+    })
+
+    const row = document.querySelector('.block-modified')
+    assert.ok(row instanceof HTMLElement)
+    assert.equal(row.querySelectorAll('.before .diff-block-line').length, 3)
+    assert.equal(row.querySelectorAll('.after .diff-block-line').length, 1)
+    assert.ok(screen.getByText('First source line'))
+    assert.ok(screen.getByText('One destination line'))
+  })
+
+  it('renders exact full-line tokens without a row-level inner-change class', () => {
+    renderSideBySideDiffRow({
+      row: createAddedRow({
+        content: 'Inserted field',
+        tokens: [
+          {
+            0: {
+              token: 'diff-add-inner',
+              length: 'Inserted field'.length,
+            },
+          },
+        ],
+      }),
+      showSideBySideDiff: true,
+    })
+
+    const row = document.querySelector('.added')
+    const token = document.querySelector('.cm-diff-add-inner')
+
+    assert.ok(row instanceof HTMLElement)
+    assert.equal(row.classList.contains('full-line-inner-change'), false)
+    assert.ok(token instanceof HTMLSpanElement)
+    assert.equal(
+      token.outerHTML,
+      '<span class="cm-diff-add-inner">Inserted field</span>'
+    )
   })
 
   it('dispatches line number checkbox changes with row and column', () => {

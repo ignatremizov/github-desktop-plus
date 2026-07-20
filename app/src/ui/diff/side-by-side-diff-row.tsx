@@ -385,8 +385,34 @@ export class SideBySideDiffRow extends React.Component<
         )
       }
       case DiffRowType.Modified: {
-        const { beforeData: before, afterData: after } = row
+        const {
+          beforeData: before,
+          afterData: after,
+          beforeBlockData,
+          afterBlockData,
+        } = row
         const rowClasses = classNames('modified', baseRowClasses)
+
+        if (beforeBlockData !== undefined && afterBlockData !== undefined) {
+          return (
+            <div
+              className={classNames(rowClasses, 'block-modified')}
+              role="cell"
+            >
+              {this.renderModifiedBlockColumn(
+                beforeBlockData,
+                beforeClasses,
+                DiffRowPrefix.Deleted
+              )}
+              {this.renderModifiedBlockColumn(
+                afterBlockData,
+                afterClasses,
+                DiffRowPrefix.Added
+              )}
+            </div>
+          )
+        }
+
         return (
           <div className={rowClasses} role="cell">
             <div className={beforeClasses}>
@@ -412,6 +438,28 @@ export class SideBySideDiffRow extends React.Component<
         )
       }
     }
+  }
+
+  private renderModifiedBlockColumn(
+    data: ReadonlyArray<IDiffRowData>,
+    columnClasses: string,
+    prefix: DiffRowPrefix
+  ) {
+    return (
+      <div className={columnClasses}>
+        <div className="diff-block-lines">
+          {data.map((line, index) => (
+            <div
+              className="diff-block-line"
+              key={`${line.diffLineNumber ?? line.lineNumber}-${index}`}
+            >
+              {this.renderLineNumbers([line.lineNumber], undefined)}
+              {this.renderContent(line, prefix)}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   public shouldComponentUpdate(

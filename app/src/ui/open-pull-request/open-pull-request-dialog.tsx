@@ -90,6 +90,9 @@ interface IOpenPullRequestDialogProps {
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
 
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
+
   /** Whether we should hide whitespace in diff. */
   readonly hideWhitespaceInDiff: boolean
 
@@ -225,6 +228,7 @@ export class OpenPullRequestDialog extends React.Component<IOpenPullRequestDialo
         selectedFile={file}
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
         showSideBySideDiff={this.props.showSideBySideDiff}
         repository={repository}
         onOpenInExternalEditor={this.props.onOpenInExternalEditor}

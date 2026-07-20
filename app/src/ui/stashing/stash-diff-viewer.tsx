@@ -38,6 +38,7 @@ interface IStashDiffViewerProps {
 
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
+  readonly enhancedDiffHighlighting: boolean
 
   /**
    * Called when the user requests to open a binary file in an the
@@ -134,6 +135,7 @@ export class StashDiffViewer extends React.PureComponent<IStashDiffViewerProps> 
           showSideBySideDiff={this.props.showSideBySideDiff}
           showDiffMinimap={this.props.showDiffMinimap}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           onOpenBinaryFile={onOpenBinaryFile}
           onChangeImageDiffType={onChangeImageDiffType}
           onHideWhitespaceInDiffChanged={

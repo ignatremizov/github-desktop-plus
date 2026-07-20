@@ -322,6 +322,9 @@ export interface IAppState {
   /** Whether text diff lines should wrap within the viewport */
   readonly wrapDiffLines: boolean
 
+  /** Whether semantic line alignment and intraline accents are enabled */
+  readonly enhancedDiffHighlighting: boolean
+
   /** The user's preferred shell. */
   readonly selectedShell: Shell
 

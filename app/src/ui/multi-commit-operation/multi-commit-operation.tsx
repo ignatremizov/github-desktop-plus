@@ -43,6 +43,7 @@ export class MultiCommitOperation extends React.Component<IMultiCommitOperationP
             resolvedExternalEditor={this.props.resolvedExternalEditor}
             openRepositoryInShell={this.props.openRepositoryInShell}
             wrapDiffLines={this.props.wrapDiffLines}
+            enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           />
         )
       case MultiCommitOperationKind.Squash:
@@ -71,6 +72,7 @@ export class MultiCommitOperation extends React.Component<IMultiCommitOperationP
             resolvedExternalEditor={this.props.resolvedExternalEditor}
             openRepositoryInShell={this.props.openRepositoryInShell}
             wrapDiffLines={this.props.wrapDiffLines}
+            enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           />
         )
       case MultiCommitOperationKind.Reorder:
@@ -99,6 +101,7 @@ export class MultiCommitOperation extends React.Component<IMultiCommitOperationP
             resolvedExternalEditor={this.props.resolvedExternalEditor}
             openRepositoryInShell={this.props.openRepositoryInShell}
             wrapDiffLines={this.props.wrapDiffLines}
+            enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           />
         )
       default:

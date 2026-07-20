@@ -2,7 +2,7 @@ import * as React from 'react'
 
 import { ILineTokens } from '../../lib/highlighter/types'
 import classNames from 'classnames'
-import { relativeChanges } from './changed-range'
+import { IRange, relativeChangeRanges } from './changed-range'
 import { mapKeysEqual } from '../../lib/equality'
 import {
   WorkingDirectoryFileChange,
@@ -130,6 +130,18 @@ interface IDiffRowModified<T = IDiffRowData> {
   readonly afterData: T
 
   /**
+   * A multi-line replacement block shown as one measured row in read-only
+   * side-by-side diffs. The first entry is also exposed through beforeData.
+   */
+  readonly beforeBlockData?: ReadonlyArray<T>
+
+  /**
+   * A multi-line replacement block shown as one measured row in read-only
+   * side-by-side diffs. The first entry is also exposed through afterData.
+   */
+  readonly afterBlockData?: ReadonlyArray<T>
+
+  /**
    * The start line of the hunk where this line belongs in the diff.
    *
    * In this context, a hunk is not exactly equivalent to a diff hunk, but
@@ -241,24 +253,161 @@ export function isRowChanged(
  */
 export function getDiffTokens(
   lineBefore: string,
-  lineAfter: string
+  lineAfter: string,
+  options: {
+    readonly preferProsePunctuation?: boolean
+  } = {}
 ): { before: ILineTokens; after: ILineTokens } {
-  const changeRanges = relativeChanges(lineBefore, lineAfter)
+  const changeRanges = relativeChangeRanges(lineBefore, lineAfter)
+  const joinProsePunctuation =
+    options.preferProsePunctuation === true &&
+    (isLikelyProseLine(lineBefore) || isLikelyProseLine(lineAfter))
 
   return {
-    before: {
-      [changeRanges.stringARange.location]: {
-        token: 'diff-delete-inner',
-        length: changeRanges.stringARange.length,
-      },
-    },
-    after: {
-      [changeRanges.stringBRange.location]: {
-        token: 'diff-add-inner',
-        length: changeRanges.stringBRange.length,
-      },
-    },
+    before: getDiffTokensForRanges(
+      lineBefore,
+      changeRanges.map(change => ({
+        ...change.stringARange,
+        counterpartLength: change.stringBRange.length,
+      })),
+      'diff-delete-inner',
+      joinProsePunctuation
+    ),
+    after: getDiffTokensForRanges(
+      lineAfter,
+      changeRanges.map(change => ({
+        ...change.stringBRange,
+        counterpartLength: change.stringARange.length,
+      })),
+      'diff-add-inner',
+      joinProsePunctuation
+    ),
   }
+}
+
+interface IDiffTokenRange extends IRange {
+  readonly counterpartLength: number
+}
+
+function getDiffTokensForRanges(
+  line: string,
+  ranges: ReadonlyArray<IDiffTokenRange>,
+  token: 'diff-add-inner' | 'diff-delete-inner',
+  joinProsePunctuation: boolean
+): ILineTokens {
+  const positiveRanges = ranges
+    .filter(range => range.length > 0)
+    .sort((a, b) => a.location - b.location)
+  const mergedRanges = new Array<{
+    location: number
+    length: number
+    counterpartLength: number
+    hasOneSidedToken: boolean
+  }>()
+
+  for (const range of positiveRanges) {
+    const previous = mergedRanges[mergedRanges.length - 1]
+
+    if (previous !== undefined) {
+      const previousEnd = previous.location + previous.length
+      const gap = line.slice(previousEnd, range.location)
+      const isOrdinaryChangedTokenSeparator =
+        gap.length > 0 && /^[\s_-]+$/.test(gap)
+      const isProseChangedTokenSeparator =
+        joinProsePunctuation && isProseTokenSeparator(gap)
+      const isOneSidedSelectorSeparator =
+        (previous.hasOneSidedToken || range.counterpartLength === 0) &&
+        /^(?:\.|::|\(|\(\))*$/.test(gap)
+
+      if (
+        isOrdinaryChangedTokenSeparator ||
+        isProseChangedTokenSeparator ||
+        isOneSidedSelectorSeparator
+      ) {
+        previous.length = range.location + range.length - previous.location
+        previous.counterpartLength += range.counterpartLength
+        previous.hasOneSidedToken ||= range.counterpartLength === 0
+        continue
+      }
+    }
+
+    mergedRanges.push({
+      ...range,
+      hasOneSidedToken: range.counterpartLength === 0,
+    })
+  }
+
+  const tokens: ILineTokens = {}
+  for (const range of mergedRanges) {
+    let location = range.location
+    let end = range.location + range.length
+
+    if (range.hasOneSidedToken) {
+      if (location >= 2 && line.slice(location - 2, location) === '::') {
+        location -= 2
+      } else if (location > 0 && line[location - 1] === '.') {
+        location--
+      }
+
+      while (true) {
+        if (line.startsWith('()', end)) {
+          end += 2
+        } else if (line[end] === '(') {
+          end++
+        } else {
+          break
+        }
+      }
+    }
+
+    tokens[location] = { token, length: end - location }
+  }
+
+  return tokens
+}
+
+function isLikelyProseLine(line: string): boolean {
+  if (/^(?: {4}|\t)/.test(line)) {
+    return false
+  }
+
+  const trimmed = line.trim()
+  if (/^(?:```|~~~)/.test(trimmed)) {
+    return false
+  }
+
+  const markdownPrefix = /^(?:#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|>\s+)/.exec(trimmed)
+  const content =
+    markdownPrefix === null ? trimmed : trimmed.slice(markdownPrefix[0].length)
+
+  if (
+    /^(?:const|let|var|func|function|type|class|interface|package|import|export|if|for|switch|return|def)\b/.test(
+      content
+    ) ||
+    /^(?:SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/.test(content) ||
+    content.includes(':=')
+  ) {
+    return false
+  }
+
+  const wordCount = content.match(/\p{L}[\p{L}\p{N}'’-]*/gu)?.length ?? 0
+  const whitespaceCount = content.match(/\s+/g)?.length ?? 0
+  const minimumWordCount = markdownPrefix === null ? 8 : 4
+
+  return wordCount >= minimumWordCount && whitespaceCount >= 3
+}
+
+function isProseTokenSeparator(value: string): boolean {
+  if (value.length === 0) {
+    return false
+  }
+
+  const withoutClitics = value.replace(
+    /['’](?:d|ll|m|re|s|t|ve)(?=\s|\p{P}|\p{S}|$)/giu,
+    ''
+  )
+
+  return /^[\s\p{P}\p{S}]+$/u.test(withoutClitics)
 }
 
 /**
@@ -406,12 +555,6 @@ export function getLargestLineNumber(hunks: DiffHunk[]): number {
 export function getNumberOfDigits(val: number): number {
   return (Math.log(val) * Math.LOG10E + 1) | 0
 }
-
-/**
- * The longest line for which we'd try to calculate a line diff, this matches
- * GitHub.com's behavior.
- **/
-export const MaxIntraLineDiffStringLength = 1024
 
 /**
  * Used to obtain classes applied to style the row as first or last of a group

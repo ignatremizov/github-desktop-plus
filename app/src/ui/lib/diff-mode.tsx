@@ -8,6 +8,8 @@ export const ShowWholeFileDefault = false
 const showWholeFileKey = 'show-whole-file'
 export const WrapDiffLinesDefault = true
 const wrapDiffLinesKey = 'wrap-diff-lines'
+export const EnhancedDiffHighlightingDefault = false
+const enhancedDiffHighlightingKey = 'enhanced-diff-highlighting'
 
 /**
  * Gets a value indicating whether not to present diffs in a split view mode
@@ -64,6 +66,19 @@ export function getWrapDiffLines(): boolean {
 /** Persists the text diff line wrapping preference. */
 export function setWrapDiffLines(wrapDiffLines: boolean) {
   setBoolean(wrapDiffLinesKey, wrapDiffLines)
+}
+
+/** Gets whether semantic line alignment and intraline accents are enabled. */
+export function getEnhancedDiffHighlighting(): boolean {
+  return getBoolean(
+    enhancedDiffHighlightingKey,
+    EnhancedDiffHighlightingDefault
+  )
+}
+
+/** Persists the enhanced diff highlighting preference. */
+export function setEnhancedDiffHighlighting(enhancedDiffHighlighting: boolean) {
+  setBoolean(enhancedDiffHighlightingKey, enhancedDiffHighlighting)
 }
 
 /**

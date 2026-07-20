@@ -58,6 +58,7 @@ interface IChangesProps {
 
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
+  readonly enhancedDiffHighlighting: boolean
 
   /** Whether or not to show the diff check marks indicating inclusion in a commit */
   readonly showDiffCheckMarks: boolean
@@ -147,6 +148,10 @@ export class Changes extends DiffPresentationStateComponent<
           showDiffMinimap={this.props.showDiffMinimap}
           onShowDiffMinimapChanged={this.onShowDiffMinimapChanged}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
+          onEnhancedDiffHighlightingChanged={
+            this.onEnhancedDiffHighlightingChanged
+          }
           onWrapDiffLinesChanged={this.onWrapDiffLinesChanged}
           canExpandWholeFile={this.state.canExpandWholeFile}
           showWholeFile={showWholeFileInHeader}
@@ -168,6 +173,7 @@ export class Changes extends DiffPresentationStateComponent<
           showSideBySideDiff={this.props.showSideBySideDiff}
           showDiffMinimap={this.props.showDiffMinimap}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           showWholeFile={this.state.showWholeFile}
           onShowWholeFileChanged={this.onShowWholeFileChanged}
           onWholeFileExpansionAvailabilityChanged={

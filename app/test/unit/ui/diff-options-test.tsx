@@ -7,6 +7,8 @@ import { fireEvent, render, screen } from '../../helpers/ui/render'
 
 function ControlledDiffOptions() {
   const [wrapDiffLines, setWrapDiffLines] = React.useState(true)
+  const [enhancedDiffHighlighting, setEnhancedDiffHighlighting] =
+    React.useState(false)
 
   return (
     <DiffOptions
@@ -19,6 +21,8 @@ function ControlledDiffOptions() {
       onShowDiffMinimapChanged={() => {}}
       wrapDiffLines={wrapDiffLines}
       onWrapDiffLinesChanged={setWrapDiffLines}
+      enhancedDiffHighlighting={enhancedDiffHighlighting}
+      onEnhancedDiffHighlightingChanged={setEnhancedDiffHighlighting}
       onDiffOptionsOpened={() => {}}
     />
   )
@@ -37,5 +41,24 @@ describe('DiffOptions', () => {
     fireEvent.click(wrapLines)
 
     assert.strictEqual((wrapLines as HTMLInputElement).checked, false)
+  })
+
+  it('controls enhanced highlighting through props', () => {
+    render(<ControlledDiffOptions />)
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Diff (Options|Settings)$/ })
+    )
+
+    const enhancedHighlighting = screen.getByLabelText(
+      /enhanced diff highlighting/i
+    )
+    assert.strictEqual(
+      (enhancedHighlighting as HTMLInputElement).checked,
+      false
+    )
+
+    fireEvent.click(enhancedHighlighting)
+
+    assert.strictEqual((enhancedHighlighting as HTMLInputElement).checked, true)
   })
 })

@@ -79,6 +79,7 @@ interface ISelectedCommitsProps {
 
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
+  readonly enhancedDiffHighlighting: boolean
 
   /**
    * Called when the user requests to open a binary file in an the
@@ -206,6 +207,7 @@ export class SelectedCommits extends DiffPresentationStateComponent<
           showSideBySideDiff={this.props.showSideBySideDiff}
           showDiffMinimap={this.props.showDiffMinimap}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           showWholeFile={this.state.showWholeFile}
           onShowWholeFileChanged={this.onShowWholeFileChanged}
           onWholeFileExpansionAvailabilityChanged={
@@ -239,6 +241,10 @@ export class SelectedCommits extends DiffPresentationStateComponent<
         showDiffMinimap={this.props.showDiffMinimap}
         onShowDiffMinimapChanged={this.onShowDiffMinimapChanged}
         wrapDiffLines={this.props.wrapDiffLines}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
+        onEnhancedDiffHighlightingChanged={
+          this.onEnhancedDiffHighlightingChanged
+        }
         onWrapDiffLinesChanged={this.onWrapDiffLinesChanged}
         canExpandWholeFile={this.state.canExpandWholeFile}
         showWholeFile={showWholeFileInHeader}

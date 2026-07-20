@@ -54,6 +54,9 @@ interface IPullRequestFilesChangedProps {
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
 
+  /** Whether semantic line alignment and intraline accents are enabled. */
+  readonly enhancedDiffHighlighting: boolean
+
   /** Whether we should hide whitespace in diff. */
   readonly hideWhitespaceInDiff: boolean
 
@@ -127,6 +130,14 @@ export class PullRequestFilesChanged extends React.Component<
 
   private onWrapDiffLinesChanged = (wrapDiffLines: boolean) => {
     return this.props.dispatcher.onWrapDiffLinesChanged(wrapDiffLines)
+  }
+
+  private onEnhancedDiffHighlightingChanged = (
+    enhancedDiffHighlighting: boolean
+  ) => {
+    return this.props.dispatcher.onEnhancedDiffHighlightingChanged(
+      enhancedDiffHighlighting
+    )
   }
 
   private onDiffOptionsOpened = () => {
@@ -305,6 +316,10 @@ export class PullRequestFilesChanged extends React.Component<
           onShowDiffMinimapChanged={this.onShowDiffMinimapChanged}
           wrapDiffLines={this.props.wrapDiffLines}
           onWrapDiffLinesChanged={this.onWrapDiffLinesChanged}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
+          onEnhancedDiffHighlightingChanged={
+            this.onEnhancedDiffHighlightingChanged
+          }
           onDiffOptionsOpened={this.onDiffOptionsOpened}
         />
       </div>
@@ -357,6 +372,7 @@ export class PullRequestFilesChanged extends React.Component<
         showSideBySideDiff={showSideBySideDiff}
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
         showDiffCheckMarks={false}
         onOpenBinaryFile={this.onOpenBinaryFile}
         onChangeImageDiffType={this.onChangeImageDiffType}

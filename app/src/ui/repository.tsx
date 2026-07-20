@@ -58,6 +58,7 @@ interface IRepositoryViewProps {
   readonly showSideBySideDiff: boolean
   readonly showDiffMinimap: boolean
   readonly wrapDiffLines: boolean
+  readonly enhancedDiffHighlighting: boolean
   readonly showDiffCheckMarks: boolean
   readonly preferAbsoluteDates: boolean
   readonly showConventionalCommitBadges: boolean
@@ -610,6 +611,7 @@ export class RepositoryView extends React.Component<
           showSideBySideDiff={this.props.showSideBySideDiff}
           showDiffMinimap={this.props.showDiffMinimap}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           onOpenBinaryFile={this.onOpenBinaryFile}
           onOpenSubmodule={this.onOpenSubmodule}
           onChangeImageDiffType={this.onChangeImageDiffType}
@@ -667,6 +669,7 @@ export class RepositoryView extends React.Component<
         showSideBySideDiff={this.props.showSideBySideDiff}
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
+        enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
         onOpenBinaryFile={this.onOpenBinaryFile}
         onOpenSubmodule={this.onOpenSubmodule}
         onChangeImageDiffType={this.onChangeImageDiffType}
@@ -763,6 +766,7 @@ export class RepositoryView extends React.Component<
           showSideBySideDiff={this.props.showSideBySideDiff}
           showDiffMinimap={this.props.showDiffMinimap}
           wrapDiffLines={this.props.wrapDiffLines}
+          enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
           showDiffCheckMarks={this.props.showDiffCheckMarks}
           onOpenBinaryFile={this.onOpenBinaryFile}
           onOpenSubmodule={this.onOpenSubmodule}

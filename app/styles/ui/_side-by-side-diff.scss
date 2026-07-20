@@ -385,6 +385,29 @@
         width: 20px;
         margin-left: -8px;
       }
+
+      &.block-modified {
+        height: auto;
+
+        .before,
+        .after {
+          align-items: stretch;
+        }
+
+        .diff-block-lines {
+          display: flex;
+          flex: 1 1 auto;
+          flex-direction: column;
+          min-width: 0;
+        }
+
+        .diff-block-line {
+          display: flex;
+          flex: 0 0 auto;
+          min-height: var(--diff-line-height, 20px);
+          position: relative;
+        }
+      }
     }
 
     .hunk-expansion-handle {

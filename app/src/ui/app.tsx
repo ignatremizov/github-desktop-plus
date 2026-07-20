@@ -2746,6 +2746,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             resolvedExternalEditor={this.state.resolvedExternalEditor}
             openRepositoryInShell={this.openCurrentRepositoryInShell}
             wrapDiffLines={this.state.wrapDiffLines}
+            enhancedDiffHighlighting={this.state.enhancedDiffHighlighting}
           />
         )
       }
@@ -2994,6 +2995,7 @@ export class App extends React.Component<IAppProps, IAppState> {
             externalEditorLabel={externalEditorLabel}
             showDiffMinimap={this.state.showDiffMinimap}
             wrapDiffLines={this.state.wrapDiffLines}
+            enhancedDiffHighlighting={this.state.enhancedDiffHighlighting}
             showSideBySideDiff={showSideBySideDiff}
             currentBranchHasPullRequest={currentBranchHasPullRequest}
             branchSortOrder={this.state.branchSortOrder}
@@ -4373,6 +4375,7 @@ export class App extends React.Component<IAppProps, IAppState> {
           showSideBySideDiff={state.showSideBySideDiff}
           showDiffMinimap={state.showDiffMinimap}
           wrapDiffLines={state.wrapDiffLines}
+          enhancedDiffHighlighting={state.enhancedDiffHighlighting}
           focusCommitMessage={state.focusCommitMessage}
           askForConfirmationOnDiscardChanges={
             state.askForConfirmationOnDiscardChanges

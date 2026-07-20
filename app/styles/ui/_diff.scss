@@ -347,12 +347,21 @@
   }
 }
 
+.cm-diff-delete-inner,
+.cm-diff-add-inner {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  box-shadow: 0 calc((var(--diff-line-height, 20px) - 1em) / 2) 0 var(--diff-inner-background-color), 0 calc((1em - var(--diff-line-height, 20px)) / 2) 0 var(--diff-inner-background-color);
+}
+
 .cm-diff-delete-inner {
-  background: var(--diff-delete-inner-background-color);
+  --diff-inner-background-color: color-mix(in srgb, var(--diff-delete-inner-background-color) 55%, var(--diff-delete-background-color));
+  background: var(--diff-inner-background-color);
 }
 
 .cm-diff-add-inner {
-  background: var(--diff-add-inner-background-color);
+  --diff-inner-background-color: color-mix(in srgb, var(--diff-add-inner-background-color) 65%, var(--diff-add-background-color));
+  background: var(--diff-inner-background-color);
 }
 
 .CodeMirror .diff-line-gutter.diff-hunk {
@@ -783,15 +792,6 @@
     &.cm-string.cm-property {
       color: var(--syntax-string-color);
     }
-  }
-
-  // Intra line markings takes precedence over syntax highlighting.
-  .cm-diff-delete-inner {
-    color: var(--diff-delete-text-color) !important;
-  }
-
-  .cm-diff-add-inner {
-    color: var(--diff-add-text-color) !important;
   }
 }
 
