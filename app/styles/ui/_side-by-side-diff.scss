@@ -559,6 +559,11 @@
     word-break: break-all;
   }
 
+  &.wrap-diff-lines.word-wrap-diff-lines .content {
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+
   &:not(.wrap-diff-lines) {
     .ReactVirtualized__Grid {
       overflow-x: hidden !important;

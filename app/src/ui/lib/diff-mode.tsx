@@ -67,6 +67,13 @@ export function setWrapDiffLines(wrapDiffLines: boolean) {
 }
 
 /**
+ * Whether the file should preserve word boundaries when diff lines wrap.
+ */
+export function isMarkdownFile(path: string): boolean {
+  return /\.(?:md|markdown|mdown|mkd|mkdn|mdx)$/i.test(path)
+}
+
+/**
  * Converts wheel input into the shared horizontal diff scroll delta.
  */
 export function getDiffHorizontalScrollDelta(
