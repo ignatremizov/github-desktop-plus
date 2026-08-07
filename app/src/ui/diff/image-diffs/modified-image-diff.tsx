@@ -7,8 +7,13 @@ import { DifferenceBlend } from './difference-blend'
 import { OnionSkin } from './onion-skin'
 import { Swipe } from './swipe'
 import { assertNever } from '../../../lib/fatal-error'
-import { ISize, getMaxFitSize } from './sizing'
+import { ISize, getMaxFitSize, getSvgSize } from './sizing'
 import { getSvgDiffShowCode, saveSvgDiffShowCode } from './svg-diff-preferences'
+import {
+  ImageDiffViewport,
+  ImageDiffZoomControls,
+  ImageDiffZoomScaleChanged,
+} from './image-diff-zoom'
 
 interface IModifiedImageDiffProps {
   readonly previous: Image
@@ -63,6 +68,15 @@ interface IModifiedImageDiffState {
 
   /** Whether the code (text) view is active. Only applicable when renderCodeDiff is provided. */
   readonly showCode: boolean
+
+  /** The current zoom scale factor (1.0 = 100%). */
+  readonly zoomScale: number
+
+  /** Position of the divider in Swipe mode. */
+  readonly swipePercentage: number
+
+  /** Opacity of the current image in Onion Skin mode. */
+  readonly onionSkinCrossfade: number
 }
 
 /** A component which renders the changes to an image in the repository */
@@ -102,27 +116,42 @@ export class ModifiedImageDiff extends React.Component<
       currentImageSize: null,
       containerSize: null,
       showCode: props.renderCodeDiff !== undefined && getSvgDiffShowCode(),
+      zoomScale: 1.0,
+      swipePercentage: 0,
+      onionSkinCrossfade: 1,
+    }
+  }
+
+  private getImageSize(img: HTMLImageElement, image: Image): ISize {
+    const svgSize = getSvgSize(image)
+    if (svgSize) {
+      return svgSize
+    }
+
+    return {
+      width: img.naturalWidth || 300,
+      height: img.naturalHeight || 150,
     }
   }
 
   private onPreviousImageLoad = (img: HTMLImageElement) => {
-    const size = { width: img.naturalWidth, height: img.naturalHeight }
+    const size = this.getImageSize(img, this.props.previous)
     this.setState({ previousImageSize: size })
   }
 
   private onCurrentImageLoad = (img: HTMLImageElement) => {
-    const size = { width: img.naturalWidth, height: img.naturalHeight }
+    const size = this.getImageSize(img, this.props.current)
     this.setState({ currentImageSize: size })
   }
 
-  private onResized = (target: HTMLElement, contentRect: ClientRect) => {
+  private onResized = (target: HTMLElement, contentRect: DOMRectReadOnly) => {
     this.resizedTimeoutID = null
-
-    const containerSize = {
-      width: target.offsetWidth,
-      height: target.offsetHeight,
-    }
-    this.setState({ containerSize })
+    this.setState({
+      containerSize: {
+        width: contentRect.width,
+        height: contentRect.height,
+      },
+    })
   }
 
   private getMaxSize(): ISize {
@@ -137,13 +166,96 @@ export class ModifiedImageDiff extends React.Component<
       return zeroSize
     }
 
+    const fitContainerSize =
+      this.props.diffType === ImageDiffType.TwoUp
+        ? {
+            width: containerSize.width / 2,
+            height: containerSize.height,
+          }
+        : containerSize
+
     const maxFitSize = getMaxFitSize(
       previousImageSize,
       currentImageSize,
-      containerSize
+      fitContainerSize
     )
 
-    return maxFitSize
+    const scale = this.state.zoomScale
+    return {
+      width: Math.round(maxFitSize.width * scale),
+      height: Math.round(maxFitSize.height * scale),
+    }
+  }
+
+  private renderZoomControls() {
+    return (
+      <ImageDiffZoomControls
+        zoomScale={this.state.zoomScale}
+        onZoomScaleChanged={this.onZoomScaleChanged}
+      />
+    )
+  }
+
+  private onZoomScaleChanged: ImageDiffZoomScaleChanged = (
+    zoomScale,
+    afterUpdate
+  ) => {
+    this.setState({ zoomScale }, afterUpdate)
+  }
+
+  private renderModeControls() {
+    switch (this.props.diffType) {
+      case ImageDiffType.Swipe:
+        return (
+          <div className="image-diff-mode-controls">
+            <input
+              aria-label="Swipe comparison position"
+              className="slider swipe-slider"
+              type="range"
+              max={100}
+              min={0}
+              value={this.state.swipePercentage}
+              step={0.1}
+              onChange={this.onSwipePercentageChanged}
+            />
+          </div>
+        )
+      case ImageDiffType.OnionSkin:
+        return (
+          <div className="image-diff-mode-controls">
+            <input
+              aria-label="Onion skin opacity"
+              className="slider onion-skin-slider"
+              type="range"
+              max={100}
+              min={0}
+              value={this.state.onionSkinCrossfade}
+              step={0.1}
+              onChange={this.onOnionSkinCrossfadeChanged}
+            />
+          </div>
+        )
+      case ImageDiffType.TwoUp:
+      case ImageDiffType.Difference:
+        return null
+      default:
+        return assertNever(
+          this.props.diffType,
+          `Unknown diff type: ${this.props.diffType}`
+        )
+    }
+  }
+
+  private onSwipePercentageChanged = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    this.setState({ swipePercentage: e.currentTarget.valueAsNumber })
+  }
+
+  private onOnionSkinCrossfadeChanged = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    this.setState({ onionSkinCrossfade: e.currentTarget.valueAsNumber })
   }
 
   private onContainerRef = (c: HTMLElement | null) => {
@@ -162,10 +274,28 @@ export class ModifiedImageDiff extends React.Component<
     }
   }
 
+  public componentWillUnmount() {
+    this.resizeObserver.disconnect()
+    if (this.resizedTimeoutID !== null) {
+      clearImmediate(this.resizedTimeoutID)
+    }
+  }
+
   public render() {
     return this.props.renderCodeDiff
       ? this.renderCodeDiff()
       : this.renderImageDiff()
+  }
+
+  private renderImageViewport() {
+    return (
+      <ImageDiffViewport
+        zoomScale={this.state.zoomScale}
+        onZoomScaleChanged={this.onZoomScaleChanged}
+      >
+        {this.renderCurrentDiffType()}
+      </ImageDiffViewport>
+    )
   }
 
   private renderCodeDiff() {
@@ -192,18 +322,22 @@ export class ModifiedImageDiff extends React.Component<
 
     return (
       <div className="panel image svg-image" id="diff">
-        <TabBar
-          selectedIndex={1 + this.props.diffType}
-          onTabClicked={this.onSvgTabClicked}
-          type={TabBarType.Switch}
-        >
-          <span>Code</span>
-          <span>2-up</span>
-          <span>Swipe</span>
-          <span>Onion Skin</span>
-          <span>Difference</span>
-        </TabBar>
-        {this.renderCurrentDiffType()}
+        <div className="image-diff-header-container">
+          <TabBar
+            selectedIndex={1 + this.props.diffType}
+            onTabClicked={this.onSvgTabClicked}
+            type={TabBarType.Switch}
+          >
+            <span>Code</span>
+            <span>2-up</span>
+            <span>Swipe</span>
+            <span>Onion Skin</span>
+            <span>Difference</span>
+          </TabBar>
+          {this.renderZoomControls()}
+          {this.renderModeControls()}
+        </div>
+        {this.renderImageViewport()}
       </div>
     )
   }
@@ -211,18 +345,22 @@ export class ModifiedImageDiff extends React.Component<
   private renderImageDiff() {
     return (
       <div className="panel image" id="diff">
-        <TabBar
-          selectedIndex={this.props.diffType}
-          onTabClicked={this.props.onChangeDiffType}
-          type={TabBarType.Switch}
-        >
-          <span>2-up</span>
-          <span>Swipe</span>
-          <span>Onion Skin</span>
-          <span>Difference</span>
-        </TabBar>
+        <div className="image-diff-header-container">
+          <TabBar
+            selectedIndex={this.props.diffType}
+            onTabClicked={this.props.onChangeDiffType}
+            type={TabBarType.Switch}
+          >
+            <span>2-up</span>
+            <span>Swipe</span>
+            <span>Onion Skin</span>
+            <span>Difference</span>
+          </TabBar>
+          {this.renderZoomControls()}
+          {this.renderModeControls()}
+        </div>
 
-        {this.renderCurrentDiffType()}
+        {this.renderImageViewport()}
       </div>
     )
   }
@@ -252,10 +390,20 @@ export class ModifiedImageDiff extends React.Component<
         )
 
       case ImageDiffType.Swipe:
-        return <Swipe {...this.getCommonProps(maxSize)} />
+        return (
+          <Swipe
+            {...this.getCommonProps(maxSize)}
+            percentage={this.state.swipePercentage}
+          />
+        )
 
       case ImageDiffType.OnionSkin:
-        return <OnionSkin {...this.getCommonProps(maxSize)} />
+        return (
+          <OnionSkin
+            {...this.getCommonProps(maxSize)}
+            crossfade={this.state.onionSkinCrossfade}
+          />
+        )
 
       case ImageDiffType.Difference:
         return <DifferenceBlend {...this.getCommonProps(maxSize)} />

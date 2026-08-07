@@ -160,6 +160,7 @@ export class ImageContainer extends React.Component<IImageProps, IImageState> {
           height={svgSize?.height}
           style={this.props.style}
           onLoad={this.onLoad}
+          draggable={false}
           alt=""
         />
       </div>

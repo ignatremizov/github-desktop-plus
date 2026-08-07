@@ -2,52 +2,31 @@ import * as React from 'react'
 import { ICommonImageDiffProperties } from './modified-image-diff'
 import { ImageContainer } from './image-container'
 
-interface IOnionSkinState {
+interface IOnionSkinProps extends ICommonImageDiffProperties {
   readonly crossfade: number
 }
 
-export class OnionSkin extends React.Component<
-  ICommonImageDiffProperties,
-  IOnionSkinState
-> {
-  public constructor(props: ICommonImageDiffProperties) {
-    super(props)
-
-    this.state = { crossfade: 1 }
-  }
-
+export class OnionSkin extends React.Component<IOnionSkinProps, {}> {
   public render() {
     const style: React.CSSProperties = {
       height: this.props.maxSize.height,
       width: this.props.maxSize.width,
     }
 
-    const maxSize: React.CSSProperties = {
-      maxHeight: this.props.maxSize.height,
-      maxWidth: this.props.maxSize.width,
+    const renderedSize: React.CSSProperties = {
+      height: this.props.maxSize.height,
+      width: this.props.maxSize.width,
     }
 
     return (
       <div className="image-diff-onion-skin">
-        <input
-          style={{
-            width: this.props.maxSize.width / 2,
-          }}
-          className="slider"
-          type="range"
-          max={100}
-          min={0}
-          value={this.state.crossfade}
-          step={0.1}
-          onChange={this.onValueChange}
-        />
         <div className="sizing-container" ref={this.props.onContainerRef}>
           <div className="image-container" style={style}>
             <div className="image-diff-previous" style={style}>
               <ImageContainer
                 image={this.props.previous}
                 onElementLoad={this.props.onPreviousImageLoad}
-                style={maxSize}
+                style={renderedSize}
               />
             </div>
 
@@ -55,22 +34,18 @@ export class OnionSkin extends React.Component<
               className="image-diff-current"
               style={{
                 ...style,
-                opacity: this.state.crossfade / 100.0,
+                opacity: this.props.crossfade / 100.0,
               }}
             >
               <ImageContainer
                 image={this.props.current}
                 onElementLoad={this.props.onCurrentImageLoad}
-                style={maxSize}
+                style={renderedSize}
               />
             </div>
           </div>
         </div>
       </div>
     )
-  }
-
-  private onValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ crossfade: e.currentTarget.valueAsNumber })
   }
 }

@@ -12,9 +12,9 @@ export class DifferenceBlend extends React.Component<
       width: this.props.maxSize.width,
     }
 
-    const maxSize: React.CSSProperties = {
-      maxHeight: this.props.maxSize.height,
-      maxWidth: this.props.maxSize.width,
+    const renderedSize: React.CSSProperties = {
+      height: this.props.maxSize.height,
+      width: this.props.maxSize.width,
     }
 
     return (
@@ -25,7 +25,7 @@ export class DifferenceBlend extends React.Component<
               <ImageContainer
                 image={this.props.previous}
                 onElementLoad={this.props.onPreviousImageLoad}
-                style={maxSize}
+                style={renderedSize}
               />
             </div>
 
@@ -34,7 +34,7 @@ export class DifferenceBlend extends React.Component<
                 image={this.props.current}
                 onElementLoad={this.props.onCurrentImageLoad}
                 style={{
-                  ...maxSize,
+                  ...renderedSize,
                   mixBlendMode: 'difference',
                 }}
               />

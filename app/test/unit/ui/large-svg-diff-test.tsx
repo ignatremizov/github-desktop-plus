@@ -66,6 +66,7 @@ describe('large SVG diff', () => {
     await waitFor(() => {
       assert.ok(screen.getByText('Added'))
       assert.ok(view.container.querySelector('#diff img'))
+      assert.ok(screen.getByRole('button', { name: 'Zoom in' }))
     })
   })
 })

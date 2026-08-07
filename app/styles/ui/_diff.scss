@@ -472,6 +472,7 @@
 .panel.image.svg-image {
   .tab-bar {
     width: 437px;
+    max-width: calc(100% - var(--spacing-double));
     margin: var(--spacing) auto;
     flex-shrink: 0;
   }
@@ -484,15 +485,101 @@
   }
 }
 
+.image-diff-header-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  column-gap: var(--spacing);
+  padding: 0 var(--spacing);
+
+  .tab-bar {
+    flex: 1 1 280px;
+    width: auto;
+    max-width: 350px;
+    min-width: 0;
+    margin: var(--spacing) 0 0;
+  }
+
+  .image-diff-zoom-controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 4px;
+    margin-top: var(--spacing);
+
+    .button {
+      padding: 0 8px;
+      height: 26px;
+      min-width: 26px;
+      font-size: var(--font-size-small);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--border-radius);
+    }
+
+    .zoom-reset-button {
+      min-width: 48px;
+      font-weight: var(--font-weight-semibold);
+    }
+  }
+
+  .image-diff-mode-controls {
+    display: flex;
+    flex: 0 0 100%;
+    justify-content: center;
+    min-width: 0;
+    padding-bottom: var(--spacing-half);
+
+    .slider {
+      margin: 0;
+      max-width: 100%;
+    }
+
+    .swipe-slider {
+      width: 350px;
+    }
+
+    .onion-skin-slider {
+      width: 250px;
+    }
+  }
+}
+
 .panel.image {
   display: flex;
+  flex-direction: column;
   flex: 1;
-  padding: var(--spacing);
+  padding: 0;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+
+  .image-diff-content-viewport {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    padding: var(--spacing);
+    position: relative;
+    cursor: grab;
+    overscroll-behavior: contain;
+    touch-action: none;
+    user-select: none;
+
+    &.dragging {
+      cursor: grabbing;
+    }
+  }
 
   .tab-bar {
     width: 350px;
+    max-width: calc(100% - var(--spacing-double));
     margin: var(--spacing) auto 0;
   }
 
@@ -538,22 +625,75 @@
   }
 }
 
+.image-diff-single {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  .image-diff-single-header {
+    flex: 0 0 auto;
+    font-weight: var(--font-weight-semibold);
+    padding-bottom: 10px;
+  }
+
+  .image-diff-single-sizing-container {
+    display: flex;
+    flex: 1;
+    justify-content: safe center;
+    align-items: safe center;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow: visible;
+
+    > .image-diff-previous,
+    > .image-diff-current {
+      flex: 0 0 auto;
+    }
+  }
+}
+
+.panel.image .image-diff-header-container {
+  .tab-bar {
+    width: auto;
+    max-width: 350px;
+    margin: var(--spacing) 0 0;
+  }
+}
+
+.panel.image.svg-image .image-diff-header-container {
+  .tab-bar {
+    max-width: 437px;
+  }
+}
+
 .image-diff-container {
   display: flex;
   width: 100%;
   height: 100%;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  justify-content: safe center;
+  align-items: safe center;
   min-height: 0;
   min-width: 0;
+  overflow: visible;
 
   .image-diff-two-up {
     display: flex;
-    max-height: 100%;
+    flex: 0 0 auto;
     min-height: 0;
     min-width: 0;
     padding: 0 var(--spacing-double);
+    overflow: visible;
+
+    > .image-diff-previous,
+    > .image-diff-current {
+      flex: 0 0 auto;
+    }
 
     .image-diff-previous {
       margin-right: var(--spacing-half);
@@ -583,16 +723,20 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
+  overflow: visible;
 
   .sizing-container {
     flex: 1;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: safe center;
+    align-items: safe center;
     min-height: 0;
     min-width: 0;
+    overflow: visible;
+    padding: var(--spacing);
 
     .image-container {
+      flex: 0 0 auto;
       position: relative;
 
       .image-diff-previous,
@@ -616,20 +760,19 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-
-  .slider {
-    align-self: center;
-  }
+  overflow: visible;
 
   .sizing-container {
     margin: 0;
     margin-bottom: var(--spacing-half);
     flex: 1;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: safe center;
+    align-items: safe center;
     min-height: 0;
     min-width: 0;
+    overflow: visible;
+    padding: var(--spacing);
 
     .image-diff-previous,
     .image-diff-current {
@@ -644,6 +787,7 @@
 
     .image-container {
       @include checkboard-background;
+      flex: 0 0 auto;
       position: relative;
     }
   }
@@ -655,22 +799,22 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-
-  .slider {
-    align-self: center;
-  }
+  overflow: visible;
 
   .sizing-container {
     margin: 0;
     margin-bottom: var(--spacing-half);
     flex: 1;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    justify-content: safe center;
+    align-items: safe center;
     min-height: 0;
     min-width: 0;
+    overflow: visible;
+    padding: var(--spacing);
 
     .image-container {
+      flex: 0 0 auto;
       position: relative;
       @include checkboard-background;
 
