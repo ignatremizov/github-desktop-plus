@@ -18,6 +18,7 @@ import {
   Image,
   LineEndingsChange,
   parseLineEndingText,
+  ILargeImageDiff,
   ILargeTextDiff,
 } from '../../models/diff'
 
@@ -608,7 +609,7 @@ export async function getFilesDiffText(
   return outputString
 }
 
-async function getImageDiff(
+export async function getImageDiff(
   repository: Repository,
   file: FileChange,
   newestCommitish: string,
@@ -685,6 +686,19 @@ async function getImageDiff(
   }
 }
 
+function extractTextDiff(
+  diff: IRawDiff,
+  lineEndingsChange?: LineEndingsChange
+) {
+  return {
+    text: diff.contents,
+    hunks: diff.hunks,
+    lineEndingsChange,
+    maxLineNumber: diff.maxLineNumber,
+    hasHiddenBidiChars: diff.hasHiddenBidiChars,
+  }
+}
+
 export async function convertDiff(
   repository: Repository,
   file: FileChange,
@@ -697,26 +711,30 @@ export async function convertDiff(
 
   // SVG files are text-based but can also be rendered as images. Return an
   // image diff that also includes the text diff so the viewer can show both.
-  if (extension === '.svg') {
-    const imageDiff = await getImageDiff(
-      repository,
-      file,
-      newestCommitish,
-      oldestCommitish
+  if (
+    extension === '.svg' &&
+    !(
+      file instanceof WorkingDirectoryFileChange &&
+      file.status.kind === AppFileStatusKind.Conflicted
     )
-    if (!diff.isBinary) {
-      return {
-        ...imageDiff,
-        textDiff: {
-          text: diff.contents,
-          hunks: diff.hunks,
-          lineEndingsChange,
-          maxLineNumber: diff.maxLineNumber,
-          hasHiddenBidiChars: diff.hasHiddenBidiChars,
-        },
+  ) {
+    try {
+      const imageDiff = await getImageDiff(
+        repository,
+        file,
+        newestCommitish,
+        oldestCommitish
+      )
+      if (!diff.isBinary) {
+        return {
+          ...imageDiff,
+          textDiff: extractTextDiff(diff, lineEndingsChange),
+        }
       }
+      return imageDiff
+    } catch {
+      // Fall through to standard text diff if image loading fails
     }
-    return imageDiff
   }
 
   if (diff.isBinary) {
@@ -726,7 +744,16 @@ export async function convertDiff(
         kind: DiffType.Binary,
       }
     } else {
-      return getImageDiff(repository, file, newestCommitish, oldestCommitish)
+      try {
+        return await getImageDiff(
+          repository,
+          file,
+          newestCommitish,
+          oldestCommitish
+        )
+      } catch {
+        return { kind: DiffType.Binary }
+      }
     }
   }
 
@@ -886,6 +913,49 @@ async function buildDiff(
     )
   }
 
+  const extension = Path.extname(file.path).toLowerCase()
+
+  const canRenderSvgAsImage =
+    extension === '.svg' &&
+    !(
+      file instanceof WorkingDirectoryFileChange &&
+      file.status.kind === AppFileStatusKind.Conflicted
+    )
+
+  if (canRenderSvgAsImage) {
+    if (!isValidBuffer(buffer)) {
+      const largeImageDiff: ILargeImageDiff = {
+        kind: DiffType.LargeImage,
+        newestCommitish,
+        oldestCommitish,
+      }
+      return largeImageDiff
+    }
+
+    try {
+      const diff = diffFromRawDiffOutput(buffer)
+      const isLargeText = isBufferTooLarge(buffer) || isDiffTooLarge(diff)
+
+      const imageDiff = await getImageDiff(
+        repository,
+        file,
+        newestCommitish,
+        oldestCommitish
+      )
+
+      if (!diff.isBinary && !isLargeText) {
+        return {
+          ...imageDiff,
+          textDiff: extractTextDiff(diff, lineEndingsChange),
+        }
+      }
+
+      return imageDiff
+    } catch {
+      // Fall through to standard large/unrenderable handling if image loading fails
+    }
+  }
+
   if (!isValidBuffer(buffer)) {
     // the buffer's diff is too large to be renderable in the UI
     return { kind: DiffType.Unrenderable }
@@ -935,10 +1005,11 @@ export async function getBlobImage(
 ): Promise<Image> {
   const extension = Path.extname(path)
   const contents = await getBlobContents(repository, commitish, path)
+  const mediaType = getMediaType(extension)
   return new Image(
     contents.buffer,
-    contents.toString('base64'),
-    getMediaType(extension),
+    mediaType === 'image/svg+xml' ? '' : contents.toString('base64'),
+    mediaType,
     contents.length
   )
 }
@@ -956,10 +1027,11 @@ export async function getWorkingDirectoryImage(
   file: FileChange
 ): Promise<Image> {
   const contents = await readFile(Path.join(repository.path, file.path))
+  const mediaType = getMediaType(Path.extname(file.path))
   return new Image(
     contents.buffer,
-    contents.toString('base64'),
-    getMediaType(Path.extname(file.path)),
+    mediaType === 'image/svg+xml' ? '' : contents.toString('base64'),
+    mediaType,
     contents.length
   )
 }

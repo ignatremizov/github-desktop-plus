@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { assertNever } from '../../lib/fatal-error'
+import { getImageDiff } from '../../lib/git/diff'
 import { encodePathAsUrl } from '../../lib/path'
 
 import { Repository } from '../../models/repository'
@@ -16,6 +17,7 @@ import {
   DiffType,
   IDiff,
   IImageDiff,
+  ILargeImageDiff,
   ITextDiff,
   ILargeTextDiff,
   ImageDiffType,
@@ -124,15 +126,25 @@ interface IDiffProps {
 
 interface IDiffState {
   readonly forceShowLargeDiff: boolean
+  readonly largeImagePreview: IImageDiff | null
+  readonly largeImagePreviewKey: string | null
+  readonly loadingLargeImagePreviewKey: string | null
+  readonly largeImagePreviewErrorKey: string | null
 }
 
 /** A component which renders a diff for a file. */
 export class Diff extends React.Component<IDiffProps, IDiffState> {
+  private isUnmounted = false
+
   public constructor(props: IDiffProps) {
     super(props)
 
     this.state = {
       forceShowLargeDiff: false,
+      largeImagePreview: null,
+      largeImagePreviewKey: null,
+      loadingLargeImagePreviewKey: null,
+      largeImagePreviewErrorKey: null,
     }
   }
 
@@ -153,6 +165,8 @@ export class Diff extends React.Component<IDiffProps, IDiffState> {
           ? this.renderLargeText(diff)
           : this.renderLargeTextDiff()
       }
+      case DiffType.LargeImage:
+        return this.renderLargeImageDiff(diff)
       case DiffType.Unrenderable:
         return this.renderUnrenderableDiff()
       default:
@@ -221,6 +235,127 @@ export class Diff extends React.Component<IDiffProps, IDiffState> {
         </Button>
       </div>
     )
+  }
+
+  private getLargeImagePreviewKey(diff: ILargeImageDiff) {
+    return [
+      this.props.repository.path,
+      this.props.file.id,
+      diff.newestCommitish,
+      diff.oldestCommitish,
+    ].join('\0')
+  }
+
+  public componentDidUpdate(prevProps: IDiffProps) {
+    const previousKey =
+      prevProps.diff.kind === DiffType.LargeImage
+        ? [
+            prevProps.repository.path,
+            prevProps.file.id,
+            prevProps.diff.newestCommitish,
+            prevProps.diff.oldestCommitish,
+          ].join('\0')
+        : null
+    const currentKey =
+      this.props.diff.kind === DiffType.LargeImage
+        ? this.getLargeImagePreviewKey(this.props.diff)
+        : null
+
+    if (
+      previousKey !== currentKey &&
+      (this.state.largeImagePreview !== null ||
+        this.state.largeImagePreviewKey !== null ||
+        this.state.loadingLargeImagePreviewKey !== null ||
+        this.state.largeImagePreviewErrorKey !== null)
+    ) {
+      this.setState({
+        largeImagePreview: null,
+        largeImagePreviewKey: null,
+        loadingLargeImagePreviewKey: null,
+        largeImagePreviewErrorKey: null,
+      })
+    }
+  }
+
+  public componentWillUnmount() {
+    this.isUnmounted = true
+  }
+
+  private renderLargeImageDiff(diff: ILargeImageDiff) {
+    const key = this.getLargeImagePreviewKey(diff)
+
+    if (
+      this.state.largeImagePreview !== null &&
+      this.state.largeImagePreviewKey === key
+    ) {
+      return this.renderImage(this.state.largeImagePreview)
+    }
+
+    const isLoading = this.state.loadingLargeImagePreviewKey === key
+    const didFail = this.state.largeImagePreviewErrorKey === key
+
+    return (
+      <div className="panel empty large-diff">
+        <img src={NoDiffImage} className="blankslate-image" alt="" />
+        <div className="description">
+          <p>This SVG is too large to preview automatically.</p>
+          <p>
+            Loading it may temporarily use significant memory or make the
+            application less responsive.
+          </p>
+          {didFail ? <p>The SVG preview could not be loaded.</p> : null}
+        </div>
+        <Button onClick={this.loadLargeImagePreview} disabled={isLoading}>
+          {isLoading ? 'Loading preview…' : 'Preview SVG'}
+        </Button>
+      </div>
+    )
+  }
+
+  private loadLargeImagePreview = async () => {
+    const diff = this.props.diff
+    if (diff.kind !== DiffType.LargeImage) {
+      return
+    }
+
+    const key = this.getLargeImagePreviewKey(diff)
+    this.setState({
+      loadingLargeImagePreviewKey: key,
+      largeImagePreviewErrorKey: null,
+    })
+
+    try {
+      const imageDiff = await getImageDiff(
+        this.props.repository,
+        this.props.file,
+        diff.newestCommitish,
+        diff.oldestCommitish
+      )
+
+      if (
+        !this.isUnmounted &&
+        this.props.diff.kind === DiffType.LargeImage &&
+        this.getLargeImagePreviewKey(this.props.diff) === key
+      ) {
+        this.setState({
+          largeImagePreview: imageDiff,
+          largeImagePreviewKey: key,
+          loadingLargeImagePreviewKey: null,
+        })
+      }
+    } catch (error) {
+      log.error('Unable to load large SVG preview', error)
+      if (
+        !this.isUnmounted &&
+        this.props.diff.kind === DiffType.LargeImage &&
+        this.getLargeImagePreviewKey(this.props.diff) === key
+      ) {
+        this.setState({
+          loadingLargeImagePreviewKey: null,
+          largeImagePreviewErrorKey: key,
+        })
+      }
+    }
   }
 
   private renderUnrenderableDiff() {

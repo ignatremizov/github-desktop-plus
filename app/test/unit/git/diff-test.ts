@@ -162,6 +162,106 @@ describe('git/diff', () => {
       assert(imageDiff.current !== undefined)
     })
 
+    it('returns image diff for SVG files with normal text diff', async t => {
+      const repository = await setupEmptyRepository(t)
+      const svgPath = join(repository.path, 'icon.svg')
+      await writeFile(
+        svgPath,
+        '<svg xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100"/></svg>\n'
+      )
+
+      const diffSelection = DiffSelection.fromInitialSelection(
+        DiffSelectionType.All
+      )
+      const file = new WorkingDirectoryFileChange(
+        'icon.svg',
+        { kind: AppFileStatusKind.Untracked },
+        diffSelection
+      )
+
+      const diff = await getWorkingDirectoryDiff(repository, file)
+      assert.equal(diff.kind, DiffType.Image)
+      const imageDiff = diff as IImageDiff
+      assert(imageDiff.current !== undefined)
+      assert.equal(imageDiff.current.contents, '')
+      assert(imageDiff.textDiff !== undefined)
+    })
+
+    it('renders SVG images automatically when only their source line is long', async t => {
+      const repository = await setupEmptyRepository(t)
+      const svgPath = join(repository.path, 'large-path.svg')
+      const longPath = 'a'.repeat(6000)
+      await writeFile(
+        svgPath,
+        `<svg xmlns="http://www.w3.org/2000/svg"><path d="${longPath}"/></svg>\n`
+      )
+
+      const diffSelection = DiffSelection.fromInitialSelection(
+        DiffSelectionType.All
+      )
+      const file = new WorkingDirectoryFileChange(
+        'large-path.svg',
+        { kind: AppFileStatusKind.Untracked },
+        diffSelection
+      )
+
+      const diff = await getWorkingDirectoryDiff(repository, file)
+      assert.equal(diff.kind, DiffType.Image)
+      const imageDiff = diff as IImageDiff
+      assert(imageDiff.current !== undefined)
+      assert.equal(imageDiff.textDiff, undefined)
+    })
+
+    it('renders conflicted SVG files as text', async t => {
+      const repository = await setupEmptyRepository(t)
+
+      await makeCommit(repository, {
+        entries: [
+          {
+            path: 'conflicted.svg',
+            contents: '<svg><rect fill="gray"/></svg>\n',
+          },
+        ],
+      })
+      const branchResult = await exec(
+        ['rev-parse', '--abbrev-ref', 'HEAD'],
+        repository.path
+      )
+      const originalBranch = branchResult.stdout.trim()
+
+      await switchTo(repository, 'svg-change')
+      await makeCommit(repository, {
+        entries: [
+          {
+            path: 'conflicted.svg',
+            contents: '<svg><rect fill="red"/></svg>\n',
+          },
+        ],
+      })
+
+      await switchTo(repository, originalBranch)
+      await makeCommit(repository, {
+        entries: [
+          {
+            path: 'conflicted.svg',
+            contents: '<svg><rect fill="blue"/></svg>\n',
+          },
+        ],
+      })
+      const mergeResult = await exec(['merge', 'svg-change'], repository.path)
+      assert.notEqual(mergeResult.exitCode, 0)
+
+      const status = await getStatusOrThrow(repository)
+      const file = status.workingDirectory.files.find(
+        candidate => candidate.path === 'conflicted.svg'
+      )
+      assert(file)
+      assert.equal(file.status.kind, AppFileStatusKind.Conflicted)
+
+      const diff = await getWorkingDirectoryDiff(repository, file)
+      assert.equal(diff.kind, DiffType.Text)
+    })
+
     it('changes for text are not set', async t => {
       const testRepoPath = await setupFixtureRepository(t, 'repo-with-changes')
       const repository = new Repository(testRepoPath, -1, null, false)

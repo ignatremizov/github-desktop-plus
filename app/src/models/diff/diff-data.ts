@@ -20,6 +20,11 @@ export enum DiffType {
   LargeText,
   /** Diff that will not be rendered */
   Unrenderable,
+  /**
+   * SVG image diff whose revisions are deliberately loaded only after the
+   * user opts in because its text diff exceeds the normal rendering limits.
+   */
+  LargeImage,
 }
 
 type LineEnding = 'CR' | 'LF' | 'CRLF'
@@ -120,6 +125,17 @@ export interface ILargeTextDiff extends ITextDiffData {
   readonly kind: DiffType.LargeText
 }
 
+/**
+ * A lightweight description of an SVG image diff that can be loaded on
+ * demand. Keeping only revision references here avoids retaining the raw SVG
+ * revisions and their base64 representations until the user requests them.
+ */
+export interface ILargeImageDiff {
+  readonly kind: DiffType.LargeImage
+  readonly newestCommitish: string
+  readonly oldestCommitish: string
+}
+
 export interface IUnrenderableDiff {
   readonly kind: DiffType.Unrenderable
 }
@@ -131,4 +147,5 @@ export type IDiff =
   | IBinaryDiff
   | ISubmoduleDiff
   | ILargeTextDiff
+  | ILargeImageDiff
   | IUnrenderableDiff
