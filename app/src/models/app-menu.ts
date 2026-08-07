@@ -126,6 +126,10 @@ export interface IMenu {
  * returned.
  */
 function getAccelerator(menuItem: Electron.MenuItem): string | null {
+  if (menuItem.userAccelerator) {
+    return menuItem.userAccelerator as string
+  }
+
   if (menuItem.accelerator) {
     return menuItem.accelerator as string
   }

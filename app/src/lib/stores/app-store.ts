@@ -1,6 +1,13 @@
 import * as Path from 'path'
 import { writeFile } from 'fs/promises'
 import {
+  commitDetailsShortcutsEqual,
+  CommitDetailsShortcut,
+  defaultCommitDetailsShortcut,
+  parseCommitDetailsShortcut,
+  serializeCommitDetailsShortcut,
+} from '../commit-details'
+import {
   defaultShowBranchNameInRepoListSetting,
   ShowBranchNameInRepoListSetting,
 } from '../../models/show-branch-name-in-repo-list'
@@ -652,6 +659,9 @@ const showCompareTabKey = 'show-compare-tab'
 const showCompareTabDefault = true
 const showConventionalCommitBadgesKey = 'show-conventional-commit-badges'
 const showConventionalCommitBadgesDefault = true
+const expandCommitDetailsByDefaultKey = 'expand-commit-details-by-default'
+const expandCommitDetailsByDefaultDefault = false
+const commitDetailsShortcutStorageKey = 'commit-details-shortcut-key'
 const repositoryIndicatorsEnabledKey = 'enable-repository-indicators'
 
 // background fetching should occur hourly when Desktop is active, but this
@@ -849,6 +859,10 @@ export class AppStore extends TypedBaseStore<IAppState> {
   private showCompareTab: boolean = showCompareTabDefault
   private showConventionalCommitBadges: boolean =
     showConventionalCommitBadgesDefault
+  private expandCommitDetailsByDefault: boolean =
+    expandCommitDetailsByDefaultDefault
+  private commitDetailsShortcut: CommitDetailsShortcut =
+    defaultCommitDetailsShortcut
   private hideWindowOnQuit: boolean = __DARWIN__
 
   private useWindowsOpenSSH: boolean = false
@@ -997,6 +1011,17 @@ export class AppStore extends TypedBaseStore<IAppState> {
       showConventionalCommitBadgesKey,
       showConventionalCommitBadgesDefault
     )
+    this.expandCommitDetailsByDefault = getBoolean(
+      expandCommitDetailsByDefaultKey,
+      expandCommitDetailsByDefaultDefault
+    )
+    this.commitDetailsShortcut = parseCommitDetailsShortcut(
+      localStorage.getItem(commitDetailsShortcutStorageKey)
+    )
+    window.addEventListener(
+      'storage',
+      this.onCommitDetailsPreferencesStorageChanged
+    )
 
     this.repositoryIndicatorUpdater = new RepositoryIndicatorUpdater(
       this.getRepositoriesForIndicatorRefresh,
@@ -1025,6 +1050,46 @@ export class AppStore extends TypedBaseStore<IAppState> {
     )
 
     onShowInstallingUpdate(this.onShowInstallingUpdate)
+  }
+
+  private onCommitDetailsPreferencesStorageChanged = (event: StorageEvent) => {
+    if (event.storageArea !== null && event.storageArea !== localStorage) {
+      return
+    }
+
+    let didChange = false
+
+    if (event.key === null || event.key === expandCommitDetailsByDefaultKey) {
+      const expandCommitDetailsByDefault = getBoolean(
+        expandCommitDetailsByDefaultKey,
+        expandCommitDetailsByDefaultDefault
+      )
+
+      if (this.expandCommitDetailsByDefault !== expandCommitDetailsByDefault) {
+        this.expandCommitDetailsByDefault = expandCommitDetailsByDefault
+        didChange = true
+      }
+    }
+
+    if (event.key === null || event.key === commitDetailsShortcutStorageKey) {
+      const commitDetailsShortcut = parseCommitDetailsShortcut(
+        localStorage.getItem(commitDetailsShortcutStorageKey)
+      )
+
+      if (
+        !commitDetailsShortcutsEqual(
+          this.commitDetailsShortcut,
+          commitDetailsShortcut
+        )
+      ) {
+        this.commitDetailsShortcut = commitDetailsShortcut
+        didChange = true
+      }
+    }
+
+    if (didChange) {
+      this.emitUpdate()
+    }
   }
 
   private initializeWindowState = async () => {
@@ -1566,6 +1631,8 @@ export class AppStore extends TypedBaseStore<IAppState> {
       showWorktreesInRepoList: this.showWorktreesInRepoList,
       showCompareTab: this.showCompareTab,
       showConventionalCommitBadges: this.showConventionalCommitBadges,
+      expandCommitDetailsByDefault: this.expandCommitDetailsByDefault,
+      commitDetailsShortcut: this.commitDetailsShortcut,
       apiRepositories: this.apiRepositoriesStore.getState(),
       useWindowsOpenSSH: this.useWindowsOpenSSH,
       showCommitLengthWarning: this.showCommitLengthWarning,
@@ -5218,6 +5285,56 @@ export class AppStore extends TypedBaseStore<IAppState> {
     setBoolean(showConventionalCommitBadgesKey, showConventionalCommitBadges)
     this.showConventionalCommitBadges = showConventionalCommitBadges
     this.emitUpdate()
+  }
+
+  public _setExpandCommitDetailsByDefault(
+    expandCommitDetailsByDefault: boolean
+  ) {
+    const stateChanged =
+      this.expandCommitDetailsByDefault !== expandCommitDetailsByDefault
+    const persistedValue = getBoolean(
+      expandCommitDetailsByDefaultKey,
+      expandCommitDetailsByDefaultDefault
+    )
+
+    if (!stateChanged && persistedValue === expandCommitDetailsByDefault) {
+      return
+    }
+
+    if (persistedValue !== expandCommitDetailsByDefault) {
+      setBoolean(expandCommitDetailsByDefaultKey, expandCommitDetailsByDefault)
+    }
+    this.expandCommitDetailsByDefault = expandCommitDetailsByDefault
+    if (stateChanged) {
+      this.emitUpdate()
+    }
+  }
+
+  public _setCommitDetailsShortcut(
+    commitDetailsShortcut: CommitDetailsShortcut
+  ) {
+    const stateChanged = !commitDetailsShortcutsEqual(
+      this.commitDetailsShortcut,
+      commitDetailsShortcut
+    )
+    const serializedShortcut = serializeCommitDetailsShortcut(
+      commitDetailsShortcut
+    )
+    const persistedShortcut = localStorage.getItem(
+      commitDetailsShortcutStorageKey
+    )
+
+    if (!stateChanged && persistedShortcut === serializedShortcut) {
+      return
+    }
+
+    if (persistedShortcut !== serializedShortcut) {
+      localStorage.setItem(commitDetailsShortcutStorageKey, serializedShortcut)
+    }
+    this.commitDetailsShortcut = commitDetailsShortcut
+    if (stateChanged) {
+      this.emitUpdate()
+    }
   }
 
   public _setCommitSpellcheckEnabled(commitSpellcheckEnabled: boolean) {

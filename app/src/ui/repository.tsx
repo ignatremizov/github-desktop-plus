@@ -39,6 +39,7 @@ import { Emoji } from '../lib/emoji'
 import { PopupType } from '../models/popup'
 import { Branch } from '../models/branch'
 import { BranchSortOrder } from '../models/branch-sort-order'
+import { CommitDetailsShortcut } from '../lib/commit-details'
 
 interface IRepositoryViewProps {
   readonly repository: Repository
@@ -62,6 +63,8 @@ interface IRepositoryViewProps {
   readonly showDiffCheckMarks: boolean
   readonly preferAbsoluteDates: boolean
   readonly showConventionalCommitBadges: boolean
+  readonly expandCommitDetailsByDefault: boolean
+  readonly commitDetailsShortcut: CommitDetailsShortcut
   readonly askForConfirmationOnDiscardChanges: boolean
   readonly askForConfirmationOnCommitFilteredChanges: boolean
   readonly askForConfirmationOnDiscardStash: boolean
@@ -670,6 +673,13 @@ export class RepositoryView extends React.Component<
         showDiffMinimap={this.props.showDiffMinimap}
         wrapDiffLines={this.props.wrapDiffLines}
         enhancedDiffHighlighting={this.props.enhancedDiffHighlighting}
+        expandCommitDetailsByDefault={this.props.expandCommitDetailsByDefault}
+        commitDetailsShortcut={this.props.commitDetailsShortcut}
+        isShowingModal={this.props.isShowingModal}
+        isShowingFoldout={this.props.isShowingFoldout}
+        enableCommitDetailsShortcut={
+          this.props.state.selectedSection === RepositorySectionTab.History
+        }
         onOpenBinaryFile={this.onOpenBinaryFile}
         onOpenSubmodule={this.onOpenSubmodule}
         onChangeImageDiffType={this.onChangeImageDiffType}

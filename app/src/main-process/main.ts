@@ -829,6 +829,10 @@ app.on('ready', () => {
     getAppWindowFromWebContents(event.sender)?.selectAllWindowContents()
   )
 
+  ipcMain.on('set-ignore-menu-shortcuts', (event, ignore) =>
+    event.sender.setIgnoreMenuShortcuts(ignore)
+  )
+
   /** An event sent by the renderer indicating a modal dialog is opened */
   ipcMain.on('dialog-did-open', event =>
     getAppWindowFromWebContents(event.sender)?.dialogDidOpen()

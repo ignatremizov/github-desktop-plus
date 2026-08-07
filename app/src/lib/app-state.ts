@@ -15,6 +15,7 @@ import { Account } from '../models/account'
 import { CommitIdentity } from '../models/commit-identity'
 import { IConfigValueOrigin } from './git/config'
 import { IDiff, ImageDiffType } from '../models/diff'
+import { CommitDetailsShortcut } from './commit-details'
 import { Repository, ILocalRepositoryState } from '../models/repository'
 import { Branch, IAheadBehind } from '../models/branch'
 import { Tip } from '../models/tip'
@@ -375,6 +376,12 @@ export interface IAppState {
    * render their type prefix as a colored badge in the commit list.
    */
   readonly showConventionalCommitBadges: boolean
+
+  /** Whether newly selected commits should show their full details */
+  readonly expandCommitDetailsByDefault: boolean
+
+  /** The single-key shortcut used to toggle selected commit details */
+  readonly commitDetailsShortcut: CommitDetailsShortcut
 
   /**
    * A map keyed on a user account (GitHub.com or GitHub Enterprise)

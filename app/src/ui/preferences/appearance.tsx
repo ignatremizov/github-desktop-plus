@@ -62,6 +62,8 @@ interface IAppearanceProps {
   readonly onShowCompareTabChanged: (show: boolean) => void
   readonly showConventionalCommitBadges: boolean
   readonly onShowConventionalCommitBadgesChanged: (show: boolean) => void
+  readonly expandCommitDetailsByDefault: boolean
+  readonly onExpandCommitDetailsByDefaultChanged: (expand: boolean) => void
   readonly showBranchNameInRepoList: ShowBranchNameInRepoListSetting
   readonly onShowBranchNameInRepoListChanged: (
     value: ShowBranchNameInRepoListSetting
@@ -91,6 +93,7 @@ interface IAppearanceState {
   readonly showWorktreesInRepoList: boolean
   readonly showCompareTab: boolean
   readonly showConventionalCommitBadges: boolean
+  readonly expandCommitDetailsByDefault: boolean
 }
 
 function getTitleBarStyleDescription(titleBarStyle: TitleBarStyle): string {
@@ -131,6 +134,7 @@ export class Appearance extends React.Component<
       showWorktreesInRepoList: props.showWorktreesInRepoList,
       showCompareTab: props.showCompareTab,
       showConventionalCommitBadges: props.showConventionalCommitBadges,
+      expandCommitDetailsByDefault: props.expandCommitDetailsByDefault,
     }
 
     if (!usePropTheme) {
@@ -169,6 +173,7 @@ export class Appearance extends React.Component<
       recentRepositoriesLength: this.props.recentRepositoriesLength,
       showCompareTab: this.props.showCompareTab,
       showConventionalCommitBadges: this.props.showConventionalCommitBadges,
+      expandCommitDetailsByDefault: this.props.expandCommitDetailsByDefault,
     })
 
     if (
@@ -251,6 +256,14 @@ export class Appearance extends React.Component<
     const show = event.currentTarget.checked
     this.setState({ showConventionalCommitBadges: show })
     this.props.onShowConventionalCommitBadgesChanged(show)
+  }
+
+  private onExpandCommitDetailsByDefaultChanged = (
+    event: React.FormEvent<HTMLInputElement>
+  ) => {
+    const expand = event.currentTarget.checked
+    this.setState({ expandCommitDetailsByDefault: expand })
+    this.props.onExpandCommitDetailsByDefaultChanged(expand)
   }
 
   private onSelectedTabSizeChanged = (
@@ -543,6 +556,16 @@ export class Appearance extends React.Component<
                 : CheckboxValue.Off
             }
             onChange={this.onShowConventionalCommitBadgesChanged}
+          />
+
+          <Checkbox
+            label="Expand selected commit details by default"
+            value={
+              this.state.expandCommitDetailsByDefault
+                ? CheckboxValue.On
+                : CheckboxValue.Off
+            }
+            onChange={this.onExpandCommitDetailsByDefaultChanged}
           />
         </div>
       </>

@@ -6,6 +6,7 @@ import { TabBar, TabBarType } from '../tab-bar'
 import { Accounts } from './accounts'
 import { SelfHostedApiType } from '../../lib/stores/sign-in-store'
 import { Advanced } from './advanced'
+import { Keyboard } from './keyboard'
 import { Git } from './git'
 import { assertNever } from '../../lib/fatal-error'
 import { Dialog, DialogFooter, DialogError } from '../dialog'
@@ -79,6 +80,11 @@ import {
 } from '../../lib/hooks/config'
 import { enableCopilotSdkCommitMessageGeneration } from '../../lib/feature-flag'
 import {
+  CommitDetailsShortcut,
+  reconcileCommitDetailsPreferencesDraft,
+} from '../../lib/commit-details'
+import { IMenu } from '../../models/app-menu'
+import {
   DateFormat,
   TimeFormat,
   INumberFormat,
@@ -133,6 +139,9 @@ interface IPreferencesProps {
   readonly showWorktreesInRepoList: boolean
   readonly showCompareTab: boolean
   readonly showConventionalCommitBadges: boolean
+  readonly expandCommitDetailsByDefault: boolean
+  readonly commitDetailsShortcut: CommitDetailsShortcut
+  readonly appMenu: IMenu | undefined
   readonly repositoryIndicatorsEnabled: boolean
   readonly showBranchNameInRepoList: ShowBranchNameInRepoListSetting
   readonly branchSortOrder: BranchSortOrder
@@ -191,6 +200,10 @@ interface IPreferencesState {
   readonly showWorktreesInRepoList: boolean
   readonly showCompareTab: boolean
   readonly showConventionalCommitBadges: boolean
+  readonly expandCommitDetailsByDefault: boolean
+  readonly expandCommitDetailsByDefaultDirty: boolean
+  readonly commitDetailsShortcut: CommitDetailsShortcut
+  readonly commitDetailsShortcutDirty: boolean
   /**
    * If unable to save Git configuration values (name, email)
    * due to an existing configuration lock file this property
@@ -293,6 +306,10 @@ export class Preferences extends React.Component<
       showWorktreesInRepoList: this.props.showWorktreesInRepoList,
       showCompareTab: this.props.showCompareTab,
       showConventionalCommitBadges: this.props.showConventionalCommitBadges,
+      expandCommitDetailsByDefault: this.props.expandCommitDetailsByDefault,
+      expandCommitDetailsByDefaultDirty: false,
+      commitDetailsShortcut: this.props.commitDetailsShortcut,
+      commitDetailsShortcutDirty: false,
       repositoryIndicatorsEnabled: this.props.repositoryIndicatorsEnabled,
       showBranchNameInRepoList: this.props.showBranchNameInRepoList,
       branchSortOrder: this.props.branchSortOrder,
@@ -419,6 +436,14 @@ export class Preferences extends React.Component<
           this.props.alwaysUseCopilotForConflictResolution,
       })
     }
+
+    const commitDetailsUpdate = reconcileCommitDetailsPreferencesDraft(
+      this.state,
+      this.props
+    )
+    if (commitDetailsUpdate !== null) {
+      this.setState(commitDetailsUpdate)
+    }
   }
 
   private onCancel = () => {
@@ -497,6 +522,10 @@ export class Preferences extends React.Component<
               <Octicon className="icon" symbol={octicons.gear} />
               Advanced
             </span>
+            <span id={this.getTabId(PreferencesTab.Keyboard)}>
+              <Octicon className="icon" symbol={octicons.key} />
+              Keyboard
+            </span>
             <span id={this.getTabId(PreferencesTab.Accessibility)}>
               <Octicon className="icon" symbol={octicons.accessibility} />
               Accessibility
@@ -536,6 +565,9 @@ export class Preferences extends React.Component<
         break
       case PreferencesTab.Advanced:
         suffix = 'advanced'
+        break
+      case PreferencesTab.Keyboard:
+        suffix = 'keyboard'
         break
       case PreferencesTab.Accessibility:
         suffix = 'accessibility'
@@ -790,6 +822,12 @@ export class Preferences extends React.Component<
             onShowConventionalCommitBadgesChanged={
               this.onShowConventionalCommitBadgesChanged
             }
+            expandCommitDetailsByDefault={
+              this.state.expandCommitDetailsByDefault
+            }
+            onExpandCommitDetailsByDefaultChanged={
+              this.onExpandCommitDetailsByDefaultChanged
+            }
             showBranchNameInRepoList={this.state.showBranchNameInRepoList}
             onShowBranchNameInRepoListChanged={
               this.onShowBranchNameInRepoListChanged
@@ -895,6 +933,15 @@ export class Preferences extends React.Component<
         )
         break
       }
+      case PreferencesTab.Keyboard:
+        View = (
+          <Keyboard
+            appMenu={this.props.appMenu}
+            commitDetailsShortcut={this.state.commitDetailsShortcut}
+            onCommitDetailsShortcutChanged={this.onCommitDetailsShortcutChanged}
+          />
+        )
+        break
       case PreferencesTab.Accessibility:
         View = (
           <Accessibility
@@ -1209,6 +1256,24 @@ export class Preferences extends React.Component<
     this.setState({ showConventionalCommitBadges })
   }
 
+  private onExpandCommitDetailsByDefaultChanged = (
+    expandCommitDetailsByDefault: boolean
+  ) => {
+    this.setState({
+      expandCommitDetailsByDefault,
+      expandCommitDetailsByDefaultDirty: true,
+    })
+  }
+
+  private onCommitDetailsShortcutChanged = (
+    commitDetailsShortcut: CommitDetailsShortcut
+  ) => {
+    this.setState({
+      commitDetailsShortcut,
+      commitDetailsShortcutDirty: true,
+    })
+  }
+
   private renderFooter() {
     const hasDisabledError = this.state.disallowedCharactersMessage != null
 
@@ -1319,6 +1384,16 @@ export class Preferences extends React.Component<
         dispatcher.setShowConventionalCommitBadges(
           this.state.showConventionalCommitBadges
         )
+      }
+
+      if (this.state.expandCommitDetailsByDefaultDirty) {
+        dispatcher.setExpandCommitDetailsByDefault(
+          this.state.expandCommitDetailsByDefault
+        )
+      }
+
+      if (this.state.commitDetailsShortcutDirty) {
+        dispatcher.setCommitDetailsShortcut(this.state.commitDetailsShortcut)
       }
 
       if (this.state.hideWindowOnQuit !== this.props.hideWindowOnQuit) {

@@ -1981,6 +1981,11 @@ export class App extends React.Component<IAppProps, IAppState> {
             showConventionalCommitBadges={
               this.state.showConventionalCommitBadges
             }
+            expandCommitDetailsByDefault={
+              this.state.expandCommitDetailsByDefault
+            }
+            commitDetailsShortcut={this.state.commitDetailsShortcut}
+            appMenu={this.state.appMenuState[0]}
             repositoryIndicatorsEnabled={this.state.repositoryIndicatorsEnabled}
             hideWindowOnQuit={this.state.hideWindowOnQuit}
             onEditGlobalGitConfig={this.editGlobalGitConfig}
@@ -4372,6 +4377,8 @@ export class App extends React.Component<IAppProps, IAppState> {
           showDiffCheckMarks={state.showDiffCheckMarks}
           preferAbsoluteDates={state.preferAbsoluteDates}
           showConventionalCommitBadges={state.showConventionalCommitBadges}
+          expandCommitDetailsByDefault={state.expandCommitDetailsByDefault}
+          commitDetailsShortcut={state.commitDetailsShortcut}
           showSideBySideDiff={state.showSideBySideDiff}
           showDiffMinimap={state.showDiffMinimap}
           wrapDiffLines={state.wrapDiffLines}

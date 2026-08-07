@@ -21,6 +21,7 @@ describe('IPC channel contract', () => {
 
   const expectedRequestChannels = [
     'select-all-window-contents',
+    'set-ignore-menu-shortcuts',
     'dialog-did-open',
     'update-menu-state',
     'renderer-ready',

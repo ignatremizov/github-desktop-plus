@@ -8,7 +8,8 @@ import { GitHubRepository } from '../../../src/models/github-repository'
 import { Owner } from '../../../src/models/owner'
 import { Repository } from '../../../src/models/repository'
 import { ExpandableCommitSummary } from '../../../src/ui/history/expandable-commit-summary'
-import { render } from '../../helpers/ui/render'
+import { defaultCommitDetailsShortcut } from '../../../src/lib/commit-details'
+import { fireEvent, render, screen } from '../../helpers/ui/render'
 
 function createRepository() {
   const owner = new Owner('octocat', 'https://api.github.com', 1)
@@ -44,6 +45,38 @@ function createCommit(sha: string, summary: string) {
 }
 
 describe('ExpandableCommitSummary', () => {
+  it('toggles one selected commit through its accessible button', () => {
+    let expanded: boolean | null = null
+    render(
+      <ExpandableCommitSummary
+        repository={createRepository()}
+        selectedCommits={[
+          createCommit('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'first'),
+        ]}
+        shasInDiff={['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']}
+        changesetData={{ files: [], linesAdded: 1, linesDeleted: 0 }}
+        emoji={new Map()}
+        isExpanded={false}
+        onExpandChanged={value => {
+          expanded = value
+        }}
+        onHighlightShas={() => {}}
+        showUnreachableCommits={() => {}}
+        accounts={[]}
+        commitDetailsShortcut={defaultCommitDetailsShortcut}
+      />
+    )
+
+    const expander = screen.getByRole('button', {
+      name: 'Expand commit details',
+    })
+    assert.equal(expander.getAttribute('aria-keyshortcuts'), 'E')
+
+    fireEvent.click(expander)
+
+    assert.equal(expanded, true)
+  })
+
   it('renders line totals for multiple selected commits', () => {
     const view = render(
       <ExpandableCommitSummary
@@ -63,6 +96,7 @@ describe('ExpandableCommitSummary', () => {
         onHighlightShas={() => {}}
         showUnreachableCommits={() => {}}
         accounts={[]}
+        commitDetailsShortcut={defaultCommitDetailsShortcut}
       />
     )
 
@@ -77,6 +111,33 @@ describe('ExpandableCommitSummary', () => {
     assert.equal(
       view.container.querySelector('.lines-deleted')?.textContent,
       '-7'
+    )
+  })
+
+  it('omits shortcut metadata when the shortcut is turned off', () => {
+    render(
+      <ExpandableCommitSummary
+        repository={createRepository()}
+        selectedCommits={[
+          createCommit('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 'first'),
+        ]}
+        shasInDiff={['aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa']}
+        changesetData={{ files: [], linesAdded: 1, linesDeleted: 0 }}
+        emoji={new Map()}
+        isExpanded={false}
+        onExpandChanged={() => {}}
+        onHighlightShas={() => {}}
+        showUnreachableCommits={() => {}}
+        accounts={[]}
+        commitDetailsShortcut="off"
+      />
+    )
+
+    assert.equal(
+      screen
+        .getByRole('button', { name: 'Expand commit details' })
+        .getAttribute('aria-keyshortcuts'),
+      null
     )
   })
 })

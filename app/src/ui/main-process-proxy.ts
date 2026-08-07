@@ -67,6 +67,9 @@ export const selectAllWindowContents = sendProxy(
   0
 )
 
+/** Temporarily prevent application-menu accelerators from consuming keys. */
+export const setIgnoreMenuShortcuts = sendProxy('set-ignore-menu-shortcuts', 1)
+
 /** Set the menu item's enabledness. */
 export const updateMenuState = sendProxy('update-menu-state', 1)
 

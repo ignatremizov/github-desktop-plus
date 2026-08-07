@@ -26,6 +26,7 @@ import {
   CommitOptions,
 } from '../../lib/app-state'
 import { assertNever, fatalError } from '../../lib/fatal-error'
+import { CommitDetailsShortcut } from '../../lib/commit-details'
 import {
   setGenericPassword,
   setGenericUsername,
@@ -3349,6 +3350,18 @@ export class Dispatcher {
     showConventionalCommitBadges: boolean
   ) {
     this.appStore._setShowConventionalCommitBadges(showConventionalCommitBadges)
+  }
+
+  public setExpandCommitDetailsByDefault(
+    expandCommitDetailsByDefault: boolean
+  ) {
+    this.appStore._setExpandCommitDetailsByDefault(expandCommitDetailsByDefault)
+  }
+
+  public setCommitDetailsShortcut(
+    commitDetailsShortcut: CommitDetailsShortcut
+  ) {
+    this.appStore._setCommitDetailsShortcut(commitDetailsShortcut)
   }
 
   public setHideWindowOnQuit(hideWindowOnQuit: boolean) {

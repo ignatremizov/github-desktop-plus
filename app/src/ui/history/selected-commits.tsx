@@ -46,6 +46,12 @@ import {
   DiffPresentationStateComponent,
   IDiffPresentationState,
 } from '../diff/diff-presentation-state'
+import {
+  CommitDetailsShortcut,
+  isCommitDetailsToggleShortcut,
+  shouldIgnoreCommitDetailsShortcutTarget,
+  shouldExpandCommitDetailsByDefault,
+} from '../../lib/commit-details'
 
 interface ISelectedCommitsProps {
   readonly repository: Repository
@@ -80,6 +86,11 @@ interface ISelectedCommitsProps {
   /** Whether text diff lines should wrap within the viewport. */
   readonly wrapDiffLines: boolean
   readonly enhancedDiffHighlighting: boolean
+  readonly expandCommitDetailsByDefault: boolean
+  readonly commitDetailsShortcut: CommitDetailsShortcut
+  readonly isShowingModal: boolean
+  readonly isShowingFoldout: boolean
+  readonly enableCommitDetailsShortcut: boolean
 
   /**
    * Called when the user requests to open a binary file in an the
@@ -124,7 +135,10 @@ export class SelectedCommits extends DiffPresentationStateComponent<
     super(props)
 
     this.state = {
-      isExpanded: false,
+      isExpanded: shouldExpandCommitDetailsByDefault(
+        props.selectedCommits.length,
+        props.expandCommitDetailsByDefault
+      ),
       selectedFiles: [],
       ...this.createDiffPresentationState(),
     }
@@ -152,8 +166,18 @@ export class SelectedCommits extends DiffPresentationStateComponent<
     const nextValue = nextProps.selectedCommits.map(c => c.sha).join('')
 
     if (currentValue !== nextValue) {
-      this.setState({ isExpanded: false, selectedFiles: [] })
+      this.setState({
+        isExpanded: shouldExpandCommitDetailsByDefault(
+          nextProps.selectedCommits.length,
+          nextProps.expandCommitDetailsByDefault
+        ),
+        selectedFiles: [],
+      })
     }
+  }
+
+  public componentDidMount() {
+    window.addEventListener('keydown', this.onWindowKeyDown)
   }
 
   public componentDidUpdate(prevProps: ISelectedCommitsProps) {
@@ -171,6 +195,7 @@ export class SelectedCommits extends DiffPresentationStateComponent<
 
   public componentWillUnmount() {
     this.loadChangedFilesScheduler.clear()
+    window.removeEventListener('keydown', this.onWindowKeyDown)
   }
 
   protected getDispatcher() {
@@ -269,6 +294,11 @@ export class SelectedCommits extends DiffPresentationStateComponent<
         onHighlightShas={this.onHighlightShas}
         showUnreachableCommits={this.showUnreachableCommits}
         accounts={this.props.accounts}
+        commitDetailsShortcut={
+          this.props.enableCommitDetailsShortcut
+            ? this.props.commitDetailsShortcut
+            : 'off'
+        }
       />
     )
   }
@@ -286,6 +316,24 @@ export class SelectedCommits extends DiffPresentationStateComponent<
 
   private onExpandChanged = (isExpanded: boolean) => {
     this.setState({ isExpanded })
+  }
+
+  private onWindowKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.defaultPrevented ||
+      event.repeat ||
+      !this.props.enableCommitDetailsShortcut ||
+      this.props.selectedCommits.length !== 1 ||
+      this.props.isShowingModal ||
+      this.props.isShowingFoldout ||
+      shouldIgnoreCommitDetailsShortcutTarget(event, event.target) ||
+      !isCommitDetailsToggleShortcut(event, this.props.commitDetailsShortcut)
+    ) {
+      return
+    }
+
+    event.preventDefault()
+    this.setState(state => ({ isExpanded: !state.isExpanded }))
   }
 
   private onHideWhitespaceInDiffChanged = (hideWhitespaceInDiff: boolean) => {

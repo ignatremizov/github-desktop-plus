@@ -30,6 +30,12 @@ export interface IButtonProps {
   /** Called on key down. */
   readonly onKeyDown?: (event: React.KeyboardEvent<HTMLButtonElement>) => void
 
+  /** Called on key up. */
+  readonly onKeyUp?: (event: React.KeyboardEvent<HTMLButtonElement>) => void
+
+  /** Called when the button loses focus. */
+  readonly onBlur?: (event: React.FocusEvent<HTMLButtonElement>) => void
+
   /** An optional tooltip to render when hovering over the button */
   readonly tooltip?: string
 
@@ -130,6 +136,9 @@ export interface IButtonProps {
   /** If a button has a sentence type further description than it's label or
    * contents */
   readonly ariaDescribedBy?: string
+
+  /** Keyboard shortcuts that activate this button. */
+  readonly ariaKeyShortcuts?: string
 
   /**
    * Whether to only show the tooltip when the tooltip target overflows its
@@ -241,6 +250,8 @@ export class Button extends React.Component<IButtonProps, {}> {
         className={className}
         onClick={disabled ? preventDefault : this.onClick}
         onKeyDown={this.props.onKeyDown}
+        onKeyUp={this.props.onKeyUp}
+        onBlur={this.props.onBlur}
         onContextMenu={disabled ? preventDefault : this.onContextMenu}
         type={this.props.type || 'button'}
         ref={this.innerButtonRef}
@@ -251,6 +262,7 @@ export class Button extends React.Component<IButtonProps, {}> {
         aria-disabled={disabled ? 'true' : undefined}
         aria-label={this.props.ariaLabel}
         aria-describedby={this.props.ariaDescribedBy}
+        aria-keyshortcuts={this.props.ariaKeyShortcuts}
         aria-haspopup={this.props.ariaHaspopup}
         aria-pressed={this.props.ariaPressed}
         aria-hidden={this.props.ariaHidden}

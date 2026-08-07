@@ -21,6 +21,11 @@ import { Avatar } from '../lib/avatar'
 import { CopyButton } from '../copy-button'
 import { Account } from '../../models/account'
 import { Emoji } from '../../lib/emoji'
+import {
+  CommitDetailsShortcut,
+  getCommitDetailsAriaKeyShortcuts,
+  getCommitDetailsToggleShortcutLabel,
+} from '../../lib/commit-details'
 
 interface IExpandableCommitSummaryProps {
   readonly repository: Repository
@@ -47,6 +52,7 @@ interface IExpandableCommitSummaryProps {
   readonly showUnreachableCommits: (tab: UnreachableCommitsTab) => void
 
   readonly accounts: ReadonlyArray<Account>
+  readonly commitDetailsShortcut: CommitDetailsShortcut
 }
 
 interface IExpandableCommitSummaryState {
@@ -217,12 +223,22 @@ export class ExpandableCommitSummary extends React.Component<
       return null
     }
 
+    const action = isExpanded ? 'Collapse' : 'Expand'
+    const shortcutLabel = getCommitDetailsToggleShortcutLabel(
+      this.props.commitDetailsShortcut
+    )
+
     return (
       <Button
         onClick={isExpanded ? this.onCollapse : this.onExpand}
         className="expander"
-        tooltip={isExpanded ? 'Collapse' : 'Expand'}
+        tooltip={
+          shortcutLabel === null ? action : `${action} (${shortcutLabel})`
+        }
         applyTooltipAriaDescribedBy={false}
+        ariaKeyShortcuts={getCommitDetailsAriaKeyShortcuts(
+          this.props.commitDetailsShortcut
+        )}
         ariaExpanded={isExpanded}
         ariaLabel={
           isExpanded ? 'Collapse commit details' : 'Expand commit details'

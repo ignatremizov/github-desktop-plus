@@ -27,6 +27,7 @@ import { MainProcessConfig } from './main-process-config'
  */
 export type RequestChannels = {
   'select-all-window-contents': () => void
+  'set-ignore-menu-shortcuts': (ignore: boolean) => void
   'dialog-did-open': () => void
   'update-menu-state': (
     state: Array<{ id: MenuIDs; state: IMenuItemState }>
