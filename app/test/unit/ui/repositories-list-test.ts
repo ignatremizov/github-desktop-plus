@@ -322,7 +322,10 @@ describe('RepositoriesList', () => {
       [linkedRepo.id, buildLocalState(worktrees)],
     ])
     const groups = groupRepositories([mainRepo, linkedRepo], worktreeState, [])
-    const filteredItems = filterRepositoryListItems('.worktrees', groups[0].items)
+    const filteredItems = filterRepositoryListItems(
+      '.worktrees',
+      groups[0].items
+    )
 
     assert.equal(filteredItems.length, 0)
   })
@@ -344,13 +347,20 @@ describe('RepositoriesList', () => {
   })
 
   it('matches visible worktree path disambiguation text', () => {
-    const repository = new Repository('/tmp/projects/project-alpha', 1, null, false)
+    const repository = new Repository(
+      '/tmp/projects/project-alpha',
+      1,
+      null,
+      false
+    )
     const item = buildListItem(repository, ['project-alpha'], {
       worktreePathDisambiguation: '/tmp/projects/target-area',
     })
 
     assert.deepEqual(
-      filterRepositoryListItems('target', [item]).map(match => match.item.title),
+      filterRepositoryListItems('target', [item]).map(
+        match => match.item.title
+      ),
       ['project-alpha']
     )
   })
@@ -374,11 +384,7 @@ describe('RepositoriesList', () => {
       'linked',
       'refs/heads/feature/item-1234-target-module-refactored'
     )
-    const worktrees = [
-      mainWorktree,
-      weakLinkedWorktree,
-      branchLinkedWorktree,
-    ]
+    const worktrees = [mainWorktree, weakLinkedWorktree, branchLinkedWorktree]
     const worktreeState = new Map<number, ILocalRepositoryState>([
       [mainRepo.id, buildLocalState(worktrees)],
       [weakLinkedRepo.id, buildLocalState(worktrees)],
@@ -654,10 +660,7 @@ describe('RepositoriesList', () => {
     assert.deepEqual(familyPaths, [mainPath, linkedPath])
 
     const allPaths = processedItems.map(match => match.item.worktree?.path)
-    assert.equal(
-      allPaths.indexOf(linkedPath),
-      allPaths.indexOf(mainPath) + 1
-    )
+    assert.equal(allPaths.indexOf(linkedPath), allPaths.indexOf(mainPath) + 1)
   })
 
   it('switches a saved linked worktree row through its source repository', () => {

@@ -233,7 +233,8 @@ export class TestNotifications extends React.Component<
 
     return (
       <>
-        Make sure notifications are {verb} for Ignat's GitHub Desktop Plus in the{' '}
+        Make sure notifications are {verb} for Ignat's GitHub Desktop Plus in
+        the{' '}
         <LinkButton uri={notificationSettingsURL}>
           Notifications Settings
         </LinkButton>

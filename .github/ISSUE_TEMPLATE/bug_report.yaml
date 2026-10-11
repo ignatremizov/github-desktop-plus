@@ -6,9 +6,9 @@ body:
     attributes:
       label: The problem
       description:
-        Describe the issue you are experiencing with Ignat's GitHub Desktop Plus. Provide a
-        clear and concise description of what you were trying to do and what
-        happened, along with any error messages you encountered.
+        Describe the issue you are experiencing with Ignat's GitHub Desktop
+        Plus. Provide a clear and concise description of what you were trying to
+        do and what happened, along with any error messages you encountered.
     validations:
       required: true
   - type: input
@@ -16,7 +16,8 @@ body:
     attributes:
       label: Release version
       description:
-        Open "Help" -> "About Ignat's GitHub Desktop Plus" menu item to see the app version.
+        Open "Help" -> "About Ignat's GitHub Desktop Plus" menu item to see the
+        app version.
     validations:
       required: true
   - type: input
@@ -44,7 +45,8 @@ body:
       label: Specific to Ignat's GitHub Desktop Plus?
       description:
         Download the [official GitHub Desktop app](https://desktop.github.com).
-        Does the issue also occur there, or is it specific to Ignat's GitHub Desktop Plus?
+        Does the issue also occur there, or is it specific to Ignat's GitHub
+        Desktop Plus?
   - type: textarea
     id: logs
     attributes:

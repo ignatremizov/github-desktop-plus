@@ -44,13 +44,13 @@ export class MoveToApplicationsFolder extends React.Component<
       >
         <DialogContent>
           <p>
-            We've detected that you're not running Ignat's GitHub Desktop Plus from the
-            Applications folder of your machine. This could cause problems with
-            the app, including impacting your ability to sign in.
+            We've detected that you're not running Ignat's GitHub Desktop Plus
+            from the Applications folder of your machine. This could cause
+            problems with the app, including impacting your ability to sign in.
           </p>
           <p>
-            Do you want to move Ignat's GitHub Desktop Plus to the Applications folder now?
-            This will also restart the app.
+            Do you want to move Ignat's GitHub Desktop Plus to the Applications
+            folder now? This will also restart the app.
           </p>
           <div>
             <Checkbox

@@ -17,7 +17,8 @@ body:
     id: proposed-solution
     attributes:
       label: Proposed solution
-      description: Share how this will benefit Ignat's GitHub Desktop Plus and its users.
+      description:
+        Share how this will benefit Ignat's GitHub Desktop Plus and its users.
     validations:
       required: true
   - type: textarea

@@ -73,9 +73,9 @@ export class UpdateAvailable extends React.Component<IUpdateAvailableProps> {
     if (this.props.isX64ToARM64ImmediateAutoUpdate) {
       return (
         <span onSubmit={this.updateNow}>
-          An optimized version of Ignat's GitHub Desktop Plus is available for your{' '}
-          {__DARWIN__ ? 'Apple silicon' : 'Arm64'} machine and will be installed
-          at the next launch or{' '}
+          An optimized version of Ignat's GitHub Desktop Plus is available for
+          your {__DARWIN__ ? 'Apple silicon' : 'Arm64'} machine and will be
+          installed at the next launch or{' '}
           <LinkButton onClick={this.updateNow}>
             restart Ignat's GitHub Desktop Plus
           </LinkButton>{' '}

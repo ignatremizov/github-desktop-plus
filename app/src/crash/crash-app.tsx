@@ -163,9 +163,8 @@ export class CrashApp extends React.Component<ICrashAppProps, ICrashAppState> {
         <p>
           Ignat's GitHub Desktop Plus has encountered an unrecoverable error and
           will need to restart. This has been reported to the team, but if you
-          encounter this repeatedly please report this issue to Ignat's
-          GitHub Desktop Plus{' '}
-          <LinkButton uri={issuesUri}>issue tracker</LinkButton>.
+          encounter this repeatedly please report this issue to Ignat's GitHub
+          Desktop Plus <LinkButton uri={issuesUri}>issue tracker</LinkButton>.
         </p>
       )
     }
