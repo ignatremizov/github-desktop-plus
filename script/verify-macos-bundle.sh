@@ -26,7 +26,10 @@ done < <(find "$app_bundle" -type l -print0)
 runtime_arch="$(ELECTRON_RUN_AS_NODE=1 "$app_binary" -p process.arch)"
 [[ "$runtime_arch" == "$arch" ]] || { echo "Wrong runtime architecture: $runtime_arch" >&2; exit 1; }
 "$resources/git/bin/git" --version
-GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \
+# Dugite sets this for every invocation; the embedded Git's compiled-in path
+# points at /libexec/git-core, not at this relocatable application bundle.
+GIT_EXEC_PATH="$resources/git/libexec/git-core" \
+  GIT_CONFIG_NOSYSTEM=1 GIT_TERMINAL_PROMPT=0 \
   "$resources/git/bin/git" -c credential.helper= \
   ls-remote https://github.com/desktop-plus/desktop-plus.git HEAD
 echo "Verified $version ($arch): identity, signature, portable symlinks, Electron runtime, and Git HTTPS."
