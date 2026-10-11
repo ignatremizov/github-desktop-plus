@@ -1,6 +1,29 @@
 name: CI
+run-name: >-
+  ${{ github.event_name == 'workflow_dispatch' && inputs.mode != '' &&
+      format('macOS {0} {1} [{2}]', inputs.mode, inputs.arch, inputs.request_id
+  || github.ref_name) ||
+      github.workflow }}
 
 on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Verify only, or verify and upload an installable app
+        type: choice
+        options: [verify, build]
+        default: build
+        required: true
+      arch:
+        description: Native macOS architecture
+        type: choice
+        options: [x64, arm64]
+        default: x64
+        required: true
+      request_id:
+        description: Optional identifier used by script/run-manual-ci.sh
+        type: string
+        required: false
   push:
     branches:
       - development
@@ -60,8 +83,89 @@ env:
     ${{ inputs.non-fatal-error-reporting-endpoint }}
 
 jobs:
+  manual-macos:
+    name: Manual macOS ${{ inputs.mode }} (${{ inputs.arch }})
+    if: github.event_name == 'workflow_dispatch' && inputs.mode != ''
+    runs-on: ${{ inputs.arch == 'x64' && 'macos-15-intel' || 'macos-15' }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      # Match ordinary CI's non-publishing channel. build:prod still sets
+      # NODE_ENV=production and uses the normal product/profile/keychain identity.
+      # An empty channel selects ad-hoc signing without Apple release secrets.
+      RELEASE_CHANNEL: ''
+      npm_config_arch: ${{ inputs.arch }}
+      TARGET_ARCH: ${{ inputs.arch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ci-environment
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          arch: ${{ inputs.arch }}
+      - name: Set package version
+        run: |
+          echo "APP_VERSION=$(node -p "require('./app/package.json').version")" >> "$GITHUB_ENV"
+      - name: Test manual CI helper
+        run: node --test script/manual-ci-test.mjs
+      - name: Verify source
+        run: |
+          yarn lint
+          yarn validate-changelog
+          git diff --exit-code
+      - name: Run desktop-trampoline tests
+        run: |
+          cd vendor/desktop-trampoline
+          yarn install --frozen-lockfile
+          yarn test
+      - name: Build production app
+        run: yarn build:prod
+      - name: Prepare testing environment
+        run: yarn test:setup
+      - name: Run unit tests
+        run: yarn test:unit
+      - name: Run script tests
+        run: yarn test:script
+      - name: Verify macOS bundle
+        run: bash script/verify-macos-bundle.sh
+      - name: Package verified app
+        if: inputs.mode == 'build'
+        run: |
+          yarn package
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs'
+          const info = {
+            repository: process.env.GITHUB_REPOSITORY,
+            commit: process.env.GITHUB_SHA,
+            version: process.env.APP_VERSION,
+            architecture: process.env.TARGET_ARCH,
+            run: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            signing: 'ad-hoc',
+            notarized: false,
+          }
+          writeFileSync('dist/build-info.json', JSON.stringify(info, null, 2) + '\n')
+          NODE
+          cd dist
+          shasum -a 256 ./*-macOS-*.zip > SHA256SUMS
+      - name: Upload verified app
+        if: inputs.mode == 'build'
+        uses: actions/upload-artifact@v7
+        with:
+          name: GitHubDesktopPlus-macOS-${{ inputs.arch }}-${{ github.sha }}
+          path: |
+            dist/*-macOS-*.zip
+            dist/SHA256SUMS
+            dist/build-info.json
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
   lint:
     name: Lint
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -86,6 +190,7 @@ jobs:
 
   compute_version:
     name: Compute app version
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -119,6 +224,7 @@ jobs:
 
   build:
     name: ${{ matrix.friendlyName }} ${{ matrix.arch }}
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == ''
     runs-on: ${{ matrix.os }}
     needs: compute_version
     permissions:
@@ -238,6 +344,7 @@ jobs:
 
   e2e-smoke:
     name: E2E Smoke ${{ matrix.friendlyName }} ${{ matrix.arch }}
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == ''
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read

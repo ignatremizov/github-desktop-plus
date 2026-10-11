@@ -268,6 +268,7 @@ yarn start       # Start the app for development and watch for changes
 - Changes to the code inside `main-process` do require a full rebuild. Stop the app and run `yarn build:dev` again.
 
 - [Read this document](docs/contributing/setup.md) for more information on how to set up your development environment.
+- For this fork's downloadable macOS builds, see [manual verification and build CI](docs/contributing/manual-macos-ci.md).
 
 ### From VSCode
 
